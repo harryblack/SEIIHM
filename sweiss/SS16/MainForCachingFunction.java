@@ -1,3 +1,5 @@
+package sweiss.SS16;
+
 import java.util.function.Function;
 
 /**

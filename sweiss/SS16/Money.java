@@ -1,3 +1,5 @@
+package sweiss.SS16;
+
 /**
  * Created by Nelson on 25.09.2016.
  */

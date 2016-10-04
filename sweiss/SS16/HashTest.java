@@ -1,3 +1,5 @@
+package sweiss.SS16;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
