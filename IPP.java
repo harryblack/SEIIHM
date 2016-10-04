@@ -3,13 +3,19 @@
  */
 public class IPP extends Thread {
     public static final int N = 5;
-    private IPP ipp;
 
-    public IPP(IPP i) {
-        ipp = i;
+    private IPP nextIPP;
+
+
+
+    public IPP getNextIPP() {
+        return nextIPP;
     }
 
-    
+    public void setNextIPP(IPP nextIPP) {
+        this.nextIPP = nextIPP;
+    }
+
 
 
 }
