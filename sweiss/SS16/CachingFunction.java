@@ -9,7 +9,7 @@ import java.util.function.Function;
 public class CachingFunction implements Function {
 
     private Function theFunction;
-    private final HashMap hashMap = new HashMap();
+    private final BoundHashMap hashMap = new BoundHashMap();
 
     public CachingFunction(Function f) {
         theFunction = f;
@@ -26,6 +26,6 @@ public class CachingFunction implements Function {
             return hashMap.get(o);
         }
         else hashMap.put(o, theFunction.apply(o));
-            return theFunction.apply(o);
+            return hashMap.get(o);
     }
 }

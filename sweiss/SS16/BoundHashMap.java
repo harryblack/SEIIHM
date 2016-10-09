@@ -11,12 +11,19 @@ public class BoundHashMap<T, U> extends HashMap {
 
     // Objektvariablen
 
-    private final Map linkedHashMap = new LinkedHashMap<>();
+    private final List<Object> arrayList = new ArrayList<>();
 
     // Methode put
-
     @Override
     public Object put(Object key, Object value) {
+        if(arrayList.size() < MAX_SIZE) {
+            arrayList.add(key);
+        }
+        else {
+            super.remove(arrayList.get(0));
+            arrayList.remove(0);
+            arrayList.add(key);
+        }
         return super.put(key, value);
     }
 
@@ -26,6 +33,7 @@ public class BoundHashMap<T, U> extends HashMap {
 
     @Override
     public boolean remove(Object key, Object value) {
+        arrayList.remove(key);
         return super.remove(key, value);
     }
 }

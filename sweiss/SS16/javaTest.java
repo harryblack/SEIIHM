@@ -14,9 +14,10 @@ public class javaTest {
 
         IPP ipp1 = new IPP();
         IPP ipp2 = new IPP();
-        ipp1.setNextIPP(ipp2);
         IPP ipp3 = new IPP();
+        ipp2.setNextIPP(ipp3);
         ipp3.setNextIPP(ipp1);
+        ipp1.setNextIPP(ipp2);
 
 
     }
