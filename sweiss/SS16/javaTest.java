@@ -7,9 +7,19 @@ public class javaTest {
 
     public static void main(String[] args) {
 
-        for (int i = 0; i < 5; i++) {
+        BoundHashMap<Integer, String> boundHashMap = new BoundHashMap<>();
 
-        }
+        boundHashMap.put(1, "one");
+        boundHashMap.put(2, "two");
+        boundHashMap.put(3, "three");
+
+        System.out.println(boundHashMap.toString());
+
+        boundHashMap.put(2, "four");
+
+        System.out.println(boundHashMap.toString());
+
+
 
 
         IPP ipp1 = new IPP();
