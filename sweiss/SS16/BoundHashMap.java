@@ -7,7 +7,7 @@ import java.util.*;
  */
 public class BoundHashMap<T, U> extends HashMap {
 
-    public static final int MAX_SIZE = 5;
+    public static final int MAX_SIZE = 3;
 
     // Objektvariablen
 

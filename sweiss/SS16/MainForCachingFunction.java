@@ -11,6 +11,7 @@ public class MainForCachingFunction {
         Function f = (t) -> (Integer)t + 5;
 
         CachingFunction cachingFunction = new CachingFunction(f);
+        CachingFunction cachingFunction1 = new CachingFunction(f);
 
         System.out.println(cachingFunction.apply(5));
         System.out.println(cachingFunction.apply(5));
