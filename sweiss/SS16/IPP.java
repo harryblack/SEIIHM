@@ -35,7 +35,6 @@ public class IPP extends Thread {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-
             }
             nextIPP.interrupt();
             interrupts++;

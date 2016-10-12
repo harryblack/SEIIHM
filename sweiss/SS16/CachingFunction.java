@@ -6,7 +6,7 @@ import java.util.function.Function;
 /**
  * Created by Nelson on 18.09.2016.
  */
-public class CachingFunction implements Function {
+public class CachingFunction<T, R> implements Function {
 
     private Function theFunction;
     private final BoundHashMap hashMap = new BoundHashMap();
