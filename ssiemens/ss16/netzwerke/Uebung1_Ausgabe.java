@@ -2,7 +2,6 @@ package ssiemens.ss16.netzwerke;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.sql.Timestamp;
 import java.util.Date;
 import java.util.Scanner;
 
@@ -11,10 +10,11 @@ import java.util.Scanner;
  */
 public class Uebung1_Ausgabe {
     public static void main(String[] args) throws IOException {
-        String input = new Scanner(System.in).next();
+        System.out.print("Eingabe: ");
+        String input = new Scanner(System.in).nextLine();
         try (FileWriter output = new FileWriter("test.txt")) {
             output.write(input);
         }
-        System.out.println(String.format("Zugriff aufgezeichnet am " + new Date()));
+        System.out.println("Zugriff aufgezeichnet am " + new Date());
     }
 }
