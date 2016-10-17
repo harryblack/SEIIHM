@@ -10,11 +10,14 @@ import java.util.Scanner;
  */
 public class Uebung1_Ausgabe {
     public static void main(String[] args) throws IOException {
-        System.out.print("Eingabe: ");
         String input = new Scanner(System.in).nextLine();
-        try (FileWriter output = new FileWriter("test.txt")) {
-            output.write(input);
+        while (!input.contains("\r\n\r\n")){
+            try (FileWriter output = new FileWriter("test.txt")) {
+                output.write(input);
+            }
+            input = new Scanner(System.in).nextLine();
         }
+
         System.out.println("Zugriff aufgezeichnet am " + new Date());
     }
 }
