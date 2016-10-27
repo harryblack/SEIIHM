@@ -2,6 +2,7 @@ package ssiemens.ss16.netzwerke;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Scanner;
 
@@ -10,14 +11,24 @@ import java.util.Scanner;
  */
 public class Uebung1_Ausgabe {
     public static void main(String[] args) throws IOException {
-        String input = new Scanner(System.in).nextLine();
-        while (!input.contains("\r\n\r\n")){
-            try (FileWriter output = new FileWriter("test.txt")) {
-                output.write(input);
+
+
+        try (Scanner scanner = new Scanner(System.in);
+             FileWriter output = new FileWriter("/home/network/Desktop/output.txt")) {
+            String input = scanner.nextLine();
+            while (!input.equals("")) {
+                output.write(input + "\r\n");
+                input = scanner.nextLine();
             }
-            input = new Scanner(System.in).nextLine();
+            output.write("----------- \r\n");
+            output.flush();
+            input = scanner.nextLine();
+            output.write(input + "\r\n");
         }
 
         System.out.println("Zugriff aufgezeichnet am " + new Date());
     }
+
+
+
 }

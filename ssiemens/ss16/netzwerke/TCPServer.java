@@ -24,6 +24,7 @@ public class TCPServer {
                 System.out.println("Client says: " + bufferedReader.readLine());
                 bufferedWriter.write("HTTP/1.0 200 OK\r\n\r\n" +
                 "<HTML> Hallo! </HTML>");
+                bufferedWriter.newLine();
                 bufferedWriter.flush();
             }
         }
