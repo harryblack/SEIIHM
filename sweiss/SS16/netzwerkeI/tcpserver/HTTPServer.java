@@ -50,18 +50,6 @@ public class HTTPServer {
                     toForwardHost.write("\r\n");
                     toForwardHost.flush();
 
-                    //boolean containsDocType = false;
-                    //String preTest = fromForwardHost.readLine();
-
-                    //while(!containsDocType) {
-                    //    if(preTest.contains("<!doctype")) {
-                    //        containsDocType = true;
-                    //    }
-                    //    else {
-                    //        preTest = fromForwardHost.readLine();
-                    //    }
-                    //}
-                    //toClient.write(preTest + "\r\n");
                     for (String line = fromForwardHost.readLine();
                          line != null;
                          line = fromForwardHost.readLine()) {
