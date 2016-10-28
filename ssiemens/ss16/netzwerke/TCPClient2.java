@@ -8,7 +8,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 
 public class TCPClient2 {
-    public static final String host ="www.google.de";
+    public static final String host ="www.mmix.cs.hm.edu/mmixvd/help/mmixvd.html";
 	
 	public static void main(String[] args){
 		TCPClient2 client = new TCPClient2();
