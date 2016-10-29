@@ -9,7 +9,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 
 public class TCPClient1 {
-    public static final String host ="www.heise.de";
+    public static final String host ="www.heise.org";
 	
 	public static void main(String[] args){
 		TCPClient1 client = new TCPClient1();
@@ -27,7 +27,7 @@ public class TCPClient1 {
 						new BufferedReader(
 								new InputStreamReader(
 										s.getInputStream()))){
-			toServer.write("GET /index.html HTTP/1.1\r\n");
+			toServer.write("GET / HTTP/1.1\r\n");
 			toServer.write("Host: "+host+"\r\n");
 			toServer.write("\r\n");
 			toServer.flush();
