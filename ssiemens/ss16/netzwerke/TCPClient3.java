@@ -13,7 +13,7 @@ import java.util.Map;
 import javax.net.ssl.HttpsURLConnection;
 
 public class TCPClient3 {
-    public static final String host = "www.mmix.cs.hm.edu/mmix.png";
+    public static final String host = "www.heise.de";
 
     public static void main(String[] args) {
         TCPClient3 client = new TCPClient3();
