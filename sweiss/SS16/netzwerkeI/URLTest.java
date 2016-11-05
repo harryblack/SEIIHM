@@ -21,8 +21,6 @@ public class URLTest {
             try (BufferedReader fromClient = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                  BufferedWriter toClient = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()))
             ) {
-
-
                 HttpURLConnection connection = (HttpURLConnection) new URL("http://" + targetURL + "/").openConnection();
                 connection.setRequestMethod("GET");
 
