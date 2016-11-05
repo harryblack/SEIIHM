@@ -13,7 +13,7 @@ import java.util.Map;
 import javax.net.ssl.HttpsURLConnection;
 
 public class TCPClient3 {
-    public static final String host = "www.mmix.cs.hm.edu/mmixvd/help/mmixvd.html";
+    public static final String host = "www.heise.de";
 
     public static void main(String[] args) {
         TCPClient3 client = new TCPClient3();
@@ -23,9 +23,11 @@ public class TCPClient3 {
 
     public void doRequest() {
         HttpURLConnection con;
+
         try {
             con = (HttpURLConnection)
                     new URL("http://" + host).openConnection();
+            System.out.println("Response-Code: " + con.getResponseCode());
             try (
 
                     InputStream input = con.getInputStream();

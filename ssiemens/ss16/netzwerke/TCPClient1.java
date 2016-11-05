@@ -9,7 +9,8 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 
 public class TCPClient1 {
-    public static final String host ="www.heise.de";
+    public static final String host ="www.wetter.de";
+	// http://mmix.cs.hm.edu/mmix.png
 	
 	public static void main(String[] args){
 		TCPClient1 client = new TCPClient1();
@@ -27,8 +28,9 @@ public class TCPClient1 {
 						new BufferedReader(
 								new InputStreamReader(
 										s.getInputStream()))){
-			toServer.write("GET /index.html HTTP/1.1\r\n");
+			toServer.write("GET /mmix.png HTTP/1.1\r\n");
 			toServer.write("Host: "+host+"\r\n");
+			toServer.write("If-None-Match: \"1de519-bf5-4daf1d10\"");
 			toServer.write("\r\n");
 			toServer.flush();
 

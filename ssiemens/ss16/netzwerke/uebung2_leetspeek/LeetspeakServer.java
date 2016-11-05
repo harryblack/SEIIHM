@@ -1,15 +1,12 @@
 package ssiemens.ss16.netzwerke.uebung2_leetspeek;
 
-import com.sun.scenario.effect.impl.sw.java.JSWBlend_SRC_OUTPeer;
 
 import java.io.*;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-/**
- * Created by Sascha on 25/10/2016.
- */
-public class LeetspeekServer extends Thread {
+public class LeetspeakServer extends Thread {
     private static final int SERVER_PORT = 8082;
     private static final Map<String, String> replaceWordToLeedspeek = new HashMap<>();
 
@@ -33,7 +30,7 @@ public class LeetspeekServer extends Thread {
     private final String targetHost;
     private final Socket clientSocket;
 
-    public LeetspeekServer(Socket clientSocket, String targetHost) throws IOException {
+    public LeetspeakServer(Socket clientSocket, String targetHost) throws IOException {
         this.clientSocket = clientSocket;
         this.targetHost = targetHost;
     }
@@ -42,12 +39,11 @@ public class LeetspeekServer extends Thread {
     public void run() {
         try (Socket c = clientSocket;
              BufferedReader clientReader = new BufferedReader(new InputStreamReader(c.getInputStream()));
-             PrintWriter clientWriter = new PrintWriter(c.getOutputStream())
         ) {
             // Get first line of HTTP-Request from Client
             final String firstLineOfClientRequest = clientReader.readLine();
 
-            if (firstLineOfClientRequest.startsWith("GET ")) {
+            if (firstLineOfClientRequest != null && firstLineOfClientRequest.startsWith("GET ")) {
 
                 // Get requested URL
                 final int urlStartIndex = 4; // Url Starts after --->    "GET "   <-- 4 charachters
@@ -55,17 +51,33 @@ public class LeetspeekServer extends Thread {
                 final String requestedUrlFromClient = firstLineOfClientRequest.substring(urlStartIndex, urlEndIndex);
                 String clientHttpResponse = "";
                 String responseFromTargetHost = "";
+                String encoding = "ISO-8859-1";
+                String contentTypeFormat = "";
 
                 // ##############################
                 // ### Connect to Target Host ###
                 // ##############################
                 try {
                     HttpURLConnection targetHostConnection = (HttpURLConnection) new URL("http://" + targetHost + requestedUrlFromClient).openConnection();
+
+                    List<String> contentTypes = targetHostConnection.getHeaderFields().get("Content-Type");
+
+                    if (contentTypes != null) {
+                        contentTypeFormat = contentTypes.get(0);
+                        String charsetString = "charset=";
+                        for (String contentType : contentTypes)
+                            if (contentType.toLowerCase().contains(charsetString)) {
+                                int readFrom = (contentType.toLowerCase().indexOf(charsetString)) + charsetString.length();
+                                encoding = contentType.substring(readFrom, contentType.length());
+                            }
+                    }
+
                     try (BufferedReader targetHostReader =
                                  new BufferedReader(
-                                         new InputStreamReader(
-                                                 (targetHostConnection).getInputStream()
-                                         ))) {
+                                         new InputStreamReader(targetHostConnection.getInputStream(), encoding)
+                                 )) {
+
+
                         // Get first response line with http-version + return code + return message
                         clientHttpResponse = targetHostConnection.getHeaderField(0);
 
@@ -78,42 +90,43 @@ public class LeetspeekServer extends Thread {
                     }
 
                 } catch (MalformedURLException e1) {
-                    e1.printStackTrace();
                 } catch (IOException e1) {
-                    e1.printStackTrace();
                 } // End of target-host connection
 
-
+                System.out.println("Original: " + responseFromTargetHost);
                 // #############################################
                 // ### Manipulate images and leetspeek words ###
                 // #############################################
 
-
-
                 if (responseFromTargetHost.contains("<html") && responseFromTargetHost.contains("html>")) {
-                    // Manipulate images
-                    responseFromTargetHost = responseFromTargetHost.replaceAll("<img src=\"*\"", "<img src=\"http://fi.cs.hm.edu/fi/hm-logo.png\"");
+                    // Manipulate images \[(.*?)\]
+                    responseFromTargetHost = responseFromTargetHost.replaceAll("<img src=\"[^\\s]+\"", "<img src=\"http://fi.cs.hm.edu/fi/hm-logo.png\"");
 
                     // Manipulate words
                     for (String originalWord : replaceWordToLeedspeek.keySet())
                         responseFromTargetHost = responseFromTargetHost.replaceAll(originalWord, replaceWordToLeedspeek.get(originalWord));
                 }
 
-
                 // ###############################
                 // ### Send response to client ###
                 // ###############################
 
-                // Send Http-Response header
-                clientWriter.println(clientHttpResponse);       // Send HTTP response code
-                clientWriter.println();                         // End of HTTP response
+                try (OutputStream streamWriter = c.getOutputStream();
+                     OutputStreamWriter outputStreamWriter = new OutputStreamWriter(streamWriter, encoding);
+                     PrintWriter clientWriter = new PrintWriter(outputStreamWriter)) {
+                    // Send Http-Response header
+                    clientWriter.println(clientHttpResponse);       // Send HTTP response code
+                    clientWriter.println("Content-Length: " + (responseFromTargetHost.length()));
+                    if (!contentTypeFormat.isEmpty())
+                        clientWriter.println("Content-Type: " + contentTypeFormat);
+                    clientWriter.println();                         // End of HTTP respons
 
-                // Send HTML-Content
-                clientWriter.println(responseFromTargetHost);
+                    // Send HTML-Content
+                    clientWriter.println(responseFromTargetHost);
+                    System.out.println(responseFromTargetHost);
+                }
             }
-
         } catch (IOException e1) {      // End of client-connection
-            e1.printStackTrace();
         }
     }
 
@@ -121,11 +134,10 @@ public class LeetspeekServer extends Thread {
         if (args.length != 1)
             throw new IllegalArgumentException("Only one parameter allowed. Example: www.targethost.net");
 
-
         ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
         System.out.println("Server started");
         while (true) {
-            new LeetspeekServer(serverSocket.accept(), args[0]).start();
+            new LeetspeakServer(serverSocket.accept(), args[0]).start();
         }
     }
 }
