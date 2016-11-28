@@ -25,6 +25,8 @@ public class Firlefanz {
         CachingFunction cachingFunction = new CachingFunction(Math::sin);
         cachingFunction.apply(0.8);
         */
+
+
     }
 
 
