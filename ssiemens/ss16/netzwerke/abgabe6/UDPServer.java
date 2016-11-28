@@ -16,11 +16,11 @@ public class UDPServer {
 
     public static void main(String[] args) throws SocketException {
         System.out.println("Server started...");
-        DatagramSocket udpSocket = new DatagramSocket(7777);
 
+        final byte[] receiveSize = new byte[PACKET_SIZE];
 
-        byte[] receiveSize = new byte[PACKET_SIZE];
-        DatagramPacket receiveData = new DatagramPacket(receiveSize, receiveSize.length);
+        final DatagramSocket udpSocket = new DatagramSocket(7777);
+        final DatagramPacket receiveData = new DatagramPacket(receiveSize, receiveSize.length);
 
         long counter = 0;
         long startTime = 0;
@@ -35,8 +35,8 @@ public class UDPServer {
                 counter++;
             }
         } catch (SocketTimeoutException e) {
-            long sendDuration = System.currentTimeMillis() - WAIT_FOR_TIMEOUT - startTime;
-            long receivedBytes = PACKET_SIZE * counter;
+            final long sendDuration = System.currentTimeMillis() - WAIT_FOR_TIMEOUT - startTime;
+            final long receivedBytes = PACKET_SIZE * counter;
             System.out.println("Send duration: " + sendDuration);
             System.out.println("Received Data: " + receivedBytes);
             System.out.println("BytesPerSecond: " + receivedBytes / sendDuration * 1000);
