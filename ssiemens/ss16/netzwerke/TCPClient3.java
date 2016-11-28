@@ -26,8 +26,15 @@ public class TCPClient3 {
 
         try {
             con = (HttpURLConnection)
-                    new URL("http://" + host).openConnection();
+                    new URL("https://maps.googleapis.com/maps/api/directions/json?origin=Germany%2C+M%C3%BCnchen%2C+80335%2C+Lothstrasse+64&destination=M%C3%BCnchen&units=metric&key=AIzaSyAZHCicOk4xRug0gbdy4DqcIdWKmRrtTbk").openConnection();
             System.out.println("Response-Code: " + con.getResponseCode());
+            System.out.println(con.getContentEncoding());
+
+            con.getContentType();
+            int test = con.getContentLength();
+            System.out.println(test);
+
+            System.out.println(con.getHeaderFields().toString());
             try (
 
                     InputStream input = con.getInputStream();
