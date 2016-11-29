@@ -6,8 +6,8 @@ import java.net.Socket;
 
 public class TCPClient {
     private static final int SERVER_PORT = 7777;
-    private static final String SERVER_HOST = "localhost";
-    private static final long PACKET_SIZE = 5000;           // Bytes
+    private static final String SERVER_HOST = "10.179.11.78";//"localhost";
+    private static final long PACKET_SIZE = 1000;           // Bytes
     private static final long SENDING_DURATION = 10_000;    // Milliseconds
     private static final long waitAfterNPackets = 1;
     private static final long waitForKMillis = 0;
@@ -26,7 +26,6 @@ public class TCPClient {
             while (System.currentTimeMillis() < stopTime) {
                 i++;
                 outputStream.write(dataToSent);
-                outputStream.flush();
                 counter++;
                 if (counter % waitAfterNPackets == 0){
                     Thread.sleep(waitForKMillis);

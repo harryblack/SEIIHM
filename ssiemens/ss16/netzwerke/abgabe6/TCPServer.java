@@ -9,7 +9,7 @@ import java.net.Socket;
 
 public class TCPServer {
     private static final int SERVER_PORT = 7777;
-    private static final long PACKET_SIZE = 5000;
+    private static final long PACKET_SIZE = 1000;
 
     public static void main(String[] args) throws IOException {
         System.out.println("TCP-Server started...");
@@ -18,6 +18,7 @@ public class TCPServer {
         try (Socket clientSocket = serverSocket.accept();
              InputStream inputStream = clientSocket.getInputStream()
         ) {
+            System.out.println("Connected with ip address: "+clientSocket.getInetAddress());
             long i = 0;
             long sumBytesReceived = 0;
             final long startTime = System.currentTimeMillis();
