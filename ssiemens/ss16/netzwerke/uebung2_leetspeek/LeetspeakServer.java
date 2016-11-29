@@ -75,8 +75,6 @@ public class LeetspeakServer extends Thread {
                                  new BufferedReader(
                                          new InputStreamReader(targetHostConnection.getInputStream(), encoding)
                                  )) {
-
-
                         // Get first response line with http-version + return code + return message
                         clientHttpResponse = targetHostConnection.getHeaderField(0);
 
