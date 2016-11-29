@@ -10,7 +10,7 @@ import java.net.*;
  */
 public class Server_TCP {
     public static void main(String[] args) throws IOException {
-        int bytesReceived = 0;
+        long bytesReceived = 0;
         char[] chars = new char[1400];
         boolean timedOut = false;
 

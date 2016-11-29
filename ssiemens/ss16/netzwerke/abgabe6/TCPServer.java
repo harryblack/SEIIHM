@@ -22,10 +22,10 @@ public class TCPServer {
             long counter = 0;
             final long startTime = System.currentTimeMillis();
             for (int line = inputStream.read(receiveSize); line != -1; line = inputStream.read(receiveSize))
-                counter++;
+                counter += line;
 
             final long stopTime = System.currentTimeMillis();
-            System.out.println("Bytes received: " + counter * PACKET_SIZE);
+            System.out.println("Bytes received: " + counter );
             System.out.println("Duration: " + (stopTime - startTime));
         }
     }

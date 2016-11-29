@@ -32,11 +32,11 @@ public class UDPServer {
             counter++;
             while (true) {
                 udpSocket.receive(receiveData);
-                counter++;
+                counter += receiveData.getLength();
             }
         } catch (SocketTimeoutException e) {
             final long sendDuration = System.currentTimeMillis() - WAIT_FOR_TIMEOUT - startTime;
-            final long receivedBytes = PACKET_SIZE * counter;
+            final long receivedBytes = counter;
             System.out.println("Send duration: " + sendDuration);
             System.out.println("Received Data: " + receivedBytes);
             System.out.println("BytesPerSecond: " + receivedBytes / sendDuration * 1000);
