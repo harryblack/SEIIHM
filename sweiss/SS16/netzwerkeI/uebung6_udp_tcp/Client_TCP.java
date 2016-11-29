@@ -21,18 +21,22 @@ public class Client_TCP {
         final int k = 10;
 
         Socket clientSocket = new Socket("localhost", 7777);
-        OutputStreamWriter outToServer = new OutputStreamWriter(clientSocket.getOutputStream());
-        while (System.currentTimeMillis() < end) {
-            outToServer.write("a");  // bytes.toString()
-            outToServer.flush();
-            packetCounter++;
+        try (
+                OutputStreamWriter outToServer = new OutputStreamWriter(clientSocket.getOutputStream());
+        ) {
 
-            if (packetCounter % N == 0) {
-                Thread.sleep(k);
+            while (System.currentTimeMillis() < end) {
+                outToServer.write("a");  // bytes.toString()
+                outToServer.flush();
+                packetCounter++;
+
+                if (packetCounter % N == 0) {
+                    Thread.sleep(k);
+                }
+                //System.out.println("Packets sent: " + packetCounter);
             }
-            //System.out.println("Packets sent: " + packetCounter);
         }
         System.out.println("packets sent: " + packetCounter);
-        System.out.println(("kbit/s: " + (packetCounter*1400*0.008)/duration));
+        System.out.println(("kbit/s: " + (packetCounter * 1400 * 0.008) / duration));
     }
 }
