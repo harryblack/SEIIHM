@@ -13,7 +13,7 @@ public class TCPClient {
     private static final int SERVER_PORT = 7777;
     private static final String SERVER_HOST = "localhost";
     private static final long PACKET_SIZE = 1400;           // Bytes
-    private static final long SENDING_DURATION = 30_000;    // Milliseconds
+    private static final long SENDING_DURATION = 10_000;    // Milliseconds
 
     public static void main(String[] args) throws IOException {
 
@@ -22,10 +22,9 @@ public class TCPClient {
         try (Socket clientSocket = new Socket(SERVER_HOST, SERVER_PORT);
              OutputStream outputStream = clientSocket.getOutputStream();
         ) {
+            long counter = 0;
             final long startTime = System.currentTimeMillis();
             final long stopTime = startTime + SENDING_DURATION;
-            long counter = 0;
-
             while (System.currentTimeMillis() < stopTime) {
                 outputStream.write(dataToSent);
                 counter++;
