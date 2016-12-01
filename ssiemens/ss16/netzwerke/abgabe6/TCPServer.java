@@ -1,39 +1,92 @@
 package ssiemens.ss16.netzwerke.abgabe6;
 
-import com.sun.xml.internal.bind.v2.runtime.reflect.Lister;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-public class TCPServer {
-    private static final int SERVER_PORT = 7777;
-    private static final long PACKET_SIZE = 1000;
+class TCPServer extends Thread {
+    // ##########################
+    // #### Object variables ####
+    // ##########################
+    private final int packetSize;
+    private final int serverPort;
+    private final Object outputMonitor;
 
-    public static void main(String[] args) throws IOException {
+    // ################
+    // ### C'tor    ###
+    // ################
+    TCPServer(int packetSize, int serverPort, Object outputMonitor) {
+        this.packetSize = packetSize;
+        this.serverPort = serverPort;
+        this.outputMonitor = outputMonitor;
+    }
+
+    // ################
+    // ### Getter   ###
+    // ################
+    private int getPacketSize() {
+        return packetSize;
+    }
+
+    private int getServerPort() {
+        return serverPort;
+    }
+
+    private Object getOutputMonitor() {
+        return outputMonitor;
+    }
+
+    // ###############
+    // ### Methods ###
+    // ###############
+    @Override
+    public void run() {
         System.out.println("TCP-Server started...");
-        final byte[] receiveSize = new byte[(int) PACKET_SIZE];
-        ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
-        try (Socket clientSocket = serverSocket.accept();
-             InputStream inputStream = clientSocket.getInputStream()
-        ) {
-            System.out.println("Connected with ip address: "+clientSocket.getInetAddress());
-            long i = 0;
-            long sumBytesReceived = 0;
-            final long startTime = System.currentTimeMillis();
-            for (int line = inputStream.read(receiveSize); line != -1; line = inputStream.read(receiveSize)) {
-                i++;
-                sumBytesReceived += line;
-                if(line != PACKET_SIZE)
-                    System.out.println(i+". not "+ PACKET_SIZE + ": " +line);
-            }
-            final long stopTime = System.currentTimeMillis();
-            System.out.println("i: "+i);
-            System.out.println("Bytes received: " + sumBytesReceived);
-            System.out.println("Duration: " + (stopTime - startTime));
-            System.out.println("BytesPerSecond: " + sumBytesReceived / ((stopTime-startTime) / 1000));
+        long startTime = 0; // initial value
+        long sumBytesReceived = 0; // initial value
+        try {
+            final byte[] receiveSize = new byte[getPacketSize()];
 
+
+
+
+            try (ServerSocket serverSocket = new ServerSocket(getServerPort());
+                 Socket clientSocket = serverSocket.accept();
+                 InputStream inputStream = clientSocket.getInputStream()
+            ) {
+                System.out.println("TCP-Server: Connected with ip address: " + clientSocket.getInetAddress());
+                sumBytesReceived = 0;
+                startTime = System.currentTimeMillis();
+                for (int line = inputStream.read(receiveSize); line != -1; line = inputStream.read(receiveSize)) {
+                    sumBytesReceived += line;
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        final long realDuration = System.currentTimeMillis() - startTime;
+        synchronized (getOutputMonitor()) {
+            System.out.println("\nTCP SERVER TRANSFER FINISHED - Socket closed!");
+            System.out.println("---------------------------------------------------");
+
+            System.out.println("Server Real duration: " + realDuration + "\r\n");
+
+            System.out.println("Server Bits received: " + sumBytesReceived * 8);
+            System.out.println("Server KBits received: " +(float) sumBytesReceived * 8 / 1000);
+            System.out.println("Server MBits received: " + (float)sumBytesReceived * 8 / 1000);
+
+            System.out.println("\nServer Bytes received: " + sumBytesReceived);
+            System.out.println("Server KB received: " + (float)sumBytesReceived / 1_000);
+            System.out.println("Server MB received: " + (float)sumBytesReceived / 1_000_000);
+
+            System.out.println("\nServer Bits/second: " + (sumBytesReceived * 8) / ((float)realDuration / 1000));
+            System.out.println("Server KBits/Second: " + ((float)sumBytesReceived * 8 / 1_000) / ((float)realDuration / 1000));
+            System.out.println("Server MBits/Second: " + ((float)sumBytesReceived * 8 / 1_000_000) / ((float)realDuration / 1000));
+
+            System.out.println("\nServer Bytes/second: " + sumBytesReceived / (realDuration / 1000));
+            System.out.println("Server KB/Second: " + ((float)sumBytesReceived / 1_000) / ((float)realDuration / 1000));
+            System.out.println("Server MB/Second: " + ((float)sumBytesReceived / 1_000_000) / ((float)realDuration / 1000));
         }
     }
 }

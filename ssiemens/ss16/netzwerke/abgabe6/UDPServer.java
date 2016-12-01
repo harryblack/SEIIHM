@@ -3,41 +3,91 @@ package ssiemens.ss16.netzwerke.abgabe6;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.SocketException;
 import java.net.SocketTimeoutException;
 
-public class UDPServer {
-    private static final int PACKET_SIZE = 1_400;           // Bytes
-    private static final long WAIT_FOR_TIMEOUT = 2_000;     // Milliseconds
+class UDPServer extends Thread {
+    // ##########################
+    // #### Object variables ####
+    // ##########################
+    private final int packetSize;           // Bytes
+    private final long waitForTimeout;     // Milliseconds
+    private final int serverPort;
+
+    // ################
+    // ### C'tor    ###
+    // ################
+    UDPServer(int packetSize, long waitForTimeout, int serverPort) {
+        this.packetSize = packetSize;
+        this.waitForTimeout = waitForTimeout;
+        this.serverPort = serverPort;
+    }
+
+    // ################
+    // ### Getter   ###
+    // ################
 
 
-    public static void main(String[] args) throws SocketException {
+    private int getPacketSize() {
+        return packetSize;
+    }
+
+    private long getWaitForTimeout() {
+        return waitForTimeout;
+    }
+
+    private int getServerPort() {
+        return serverPort;
+    }
+
+    // ###############
+    // ### Methods ###
+    // ###############
+    @Override
+    public void run() {
         System.out.println("UDP-Server started...");
 
-        final byte[] receiveSize = new byte[PACKET_SIZE];
-
-        final DatagramSocket udpSocket = new DatagramSocket(7777);
+        // Expected data size to receive
+        final byte[] receiveSize = new byte[getPacketSize()];
         final DatagramPacket receiveData = new DatagramPacket(receiveSize, receiveSize.length);
 
         long sumBytesReceived = 0;
-        long startTime = -1;         // Only inital value
-        try {
+        long startTime = -1;         // Initial value only
+        try (DatagramSocket udpSocket = new DatagramSocket(getServerPort())) {
+            System.out.println("Server: Waiting for transmitting client...");
             udpSocket.receive(receiveData);     // First wait for data
+            System.out.println("Server: Connected with client: " + receiveData.getAddress() + ". Reading data - Please wait...");
             startTime = System.currentTimeMillis();
-            udpSocket.setSoTimeout((int) WAIT_FOR_TIMEOUT);
+            udpSocket.setSoTimeout((int) getWaitForTimeout());
             sumBytesReceived += receiveData.getLength();
             while (true) {
                 udpSocket.receive(receiveData);
                 sumBytesReceived += receiveData.getLength();
             }
         } catch (SocketTimeoutException e) {
-            final long sendDuration = System.currentTimeMillis() - WAIT_FOR_TIMEOUT - startTime;
-            System.out.println("Send duration: " + sendDuration);
-            System.out.println("Received Data: " + sumBytesReceived);
-            System.out.println("BytesPerSecond: " + sumBytesReceived / sendDuration * 1000);
+            final long realDuration = System.currentTimeMillis() - getWaitForTimeout() - startTime;
+
+            System.out.println("\nUDP SERVER TRANSFER FINISHED - Socket closed!");
+            System.out.println("---------------------------------------------------");
+
+            System.out.println("Server Real duration: " + realDuration + "\r\n");
+
+            System.out.println("Server Bits received: " + sumBytesReceived * 8);
+            System.out.println("Server KBits received: " + (float) sumBytesReceived * 8 / 1000);
+            System.out.println("Server MBits received: " + (float) sumBytesReceived * 8 / 1000);
+
+            System.out.println("\nServer Bytes received: " + sumBytesReceived);
+            System.out.println("Server KB received: " + (float) sumBytesReceived / 1_000);
+            System.out.println("Server MB received: " + (float) sumBytesReceived / 1_000_000);
+
+            System.out.println("\nServer Bits/second: " + (sumBytesReceived * 8) / (realDuration / 1000));
+            System.out.println("Server KBits/Second: " + ((float) sumBytesReceived * 8 / 1_000) / ((float) realDuration / 1000));
+            System.out.println("Server MBits/Second: " + ((float) sumBytesReceived * 8 / 1_000_000) / ((float) realDuration / 1000));
+
+            System.out.println("\nServer Bytes/second: " + sumBytesReceived / ((float) realDuration / 1000));
+            System.out.println("Server KB/Second: " + ((float) sumBytesReceived / 1_000) / ((float) realDuration / 1000));
+            System.out.println("Server MB/Second: " + ((float) sumBytesReceived / 1_000_000) / ((float) realDuration / 1000));
         } catch (IOException e) {
             e.printStackTrace();
-
         }
     }
 }
