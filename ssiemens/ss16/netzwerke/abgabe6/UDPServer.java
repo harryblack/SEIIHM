@@ -90,4 +90,8 @@ class UDPServer extends Thread {
             e.printStackTrace();
         }
     }
+
+    public static void main(String[] args) {
+        new UDPServer(1400,1_000,7777).start();
+    }
 }

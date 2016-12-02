@@ -111,4 +111,8 @@ class UDPClient extends Thread {
         System.out.println("Client KB/Second: " + ((float)bytesTransferred / 1_000) / ((float)getSendingDuration() / 1000));
         System.out.println("Client MB/Second: " + ((float)bytesTransferred / 1_000_000) / ((float)getSendingDuration() / 1000));
     }
+
+    public static void main(String[] args) {
+        new UDPClient(1400,30_000, "localhost", 7777,0,0).start();
+    }
 }

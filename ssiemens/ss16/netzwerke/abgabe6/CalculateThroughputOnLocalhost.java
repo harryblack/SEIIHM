@@ -7,7 +7,7 @@ public class CalculateThroughputOnLocalhost {
         // ########################################
         // ### Change parameters to your needs ###
         // ########################################
-        final boolean useTCP = true;          // true: use TCP. false: use UDP
+        final boolean useTCP = false;          // true: use TCP. false: use UDP
         final long sendingDuration = 10_000;    // Milliseconds
         final int packetSize = 1400;            // Bytes
         final long waitAfterNPackets = 0;       // Waits after the given packet number for a given time (see waitForKMillis)

@@ -124,4 +124,8 @@ public class TCPClient extends Thread {
             System.out.println("Client MB/Second: " + ((float)bytesTransferred / 1_000_000) / ((float)getSendingDuration() / 1000));
         }
     }
+
+    public static void main(String[] args) {
+         new TCPClient(1400, 30_000, "localhost", 7777, 0, 0, new Object()).start();
+    }
 }

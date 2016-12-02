@@ -89,4 +89,8 @@ class TCPServer extends Thread {
             System.out.println("Server MB/Second: " + ((float)sumBytesReceived / 1_000_000) / ((float)realDuration / 1000));
         }
     }
+
+    public static void main(String[] args) {
+        new TCPServer(1400,7777,new Object()).start();
+    }
 }
