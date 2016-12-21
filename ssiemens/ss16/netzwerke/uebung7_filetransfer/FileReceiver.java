@@ -1,14 +1,20 @@
 package ssiemens.ss16.netzwerke.uebung7_filetransfer;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.SocketException;
+import java.io.PrintWriter;
+import java.net.*;
 
 /**
  * Created by Sascha on 20/12/2016.
  */
 public class FileReceiver {
+
+    private static DatagramPacket packetToSend;
+    private static DatagramPacket packetReceived;
+    byte[] ACKBytes = new byte[1];
+
     // all states for this FSM
     enum State {
         WAIT0, WAIT1
@@ -32,10 +38,10 @@ public class FileReceiver {
         // define all valid state transitions for our state machine
         // (undefined transitions will be ignored)
         transition = new Transition[State.values().length][Msg.values().length];
-        transition[State.WAIT0.ordinal()][Msg.GOTSEQ0.ordinal()] = new wait0got0();
-        transition[State.WAIT0.ordinal()][Msg.GOTSEQ1.ordinal()] = new wait0got1();
-        transition[State.WAIT1.ordinal()][Msg.GOTSEQ0.ordinal()] = new wait1got0();
-        transition[State.WAIT1.ordinal()][Msg.GOTSEQ1.ordinal()] = new wait1got1();
+        transition[State.WAIT0.ordinal()][Msg.GOTSEQ0.ordinal()] = new got0SendAck0();
+        transition[State.WAIT0.ordinal()][Msg.GOTSEQ1.ordinal()] = new got1SendAck0();
+        transition[State.WAIT1.ordinal()][Msg.GOTSEQ0.ordinal()] = new got0SendAck1();
+        transition[State.WAIT1.ordinal()][Msg.GOTSEQ1.ordinal()] = new got1SendAck1();
         System.out.println("INFO FSM constructed, current state: " + currentState);
     }
 
@@ -45,7 +51,7 @@ public class FileReceiver {
      * @param input Message or condition that has occurred.
      */
     public void
-    processMsg(Msg input) {
+    processMsg(Msg input) throws UnknownHostException {
         System.out.println("INFO Received " + input + " in state " + currentState);
         Transition trans = transition[currentState.ordinal()][input.ordinal()];
         if (trans != null) {
@@ -61,38 +67,85 @@ public class FileReceiver {
      */
     abstract class
     Transition {
-        abstract public State execute(Msg input);
+        abstract public State execute(Msg input) throws UnknownHostException;
     }
 
-    class wait0got0 extends Transition {
+    class got0SendAck0 extends Transition {
         @Override
-        public State execute(Msg input) {
-            System.out.println("Went from WAIT0 to WAIT1");
+        public State execute(Msg input) throws UnknownHostException {
+            System.out.println("Got SEQ0");
+            ACKBytes[0] = 0;
+            packetToSend = new DatagramPacket(ACKBytes, ACKBytes.length, InetAddress.getByName("localhost"), 7774);
             return State.WAIT1;
         }
     }
 
-    class wait0got1 extends Transition {
+    class got1SendAck0 extends Transition {
         @Override
         public State execute(Msg input) {
-            System.out.println("wait0got1");
+            System.out.println("Got SEQ1");
             return State.WAIT0;
         }
     }
 
-    class wait1got0 extends Transition {
+    class got0SendAck1 extends Transition {
         @Override
         public State execute(Msg input) {
-            System.out.println("wait1got0");
+            System.out.println("Got SEQ0");
             return State.WAIT1;
         }
     }
 
-    class wait1got1 extends Transition {
+    class got1SendAck1 extends Transition {
         @Override
         public State execute(Msg input) {
-            System.out.println("wait1got1");
+            System.out.println("Got SEQ1");
             return State.WAIT0;
         }
     }
+
+    public static void main(String[] args) throws IOException {
+        // Create new FileReceiver
+        FileReceiver fileReceiver = new FileReceiver();
+
+        // Create new FileWriter
+        //FileWriter fileWriter = new FileWriter("filetransfer.txt");
+        //PrintWriter printWriter = new PrintWriter(fileWriter);
+
+        // Create Socket for reception of packets
+        DatagramSocket socket = new DatagramSocket(7777);
+
+        // Instantiate timeout variable to check for potential socket timeout later
+        boolean timeout = false;
+
+        // Instantiate byteArray to store received info
+        byte[] bytes = new byte[1400];
+
+        packetReceived = new DatagramPacket(bytes, bytes.length);
+
+        while (!timeout)
+            try {
+                // Set socket timeout and wait for file to receive
+                socket.setSoTimeout(10000);
+                socket.receive(packetReceived);
+                socket.setSoTimeout(0);
+
+                System.out.println("Packet length: " + packetReceived.getLength());
+                System.out.println("Packet port: " + packetReceived.getPort());
+
+                bytes = packetReceived.getData();
+                System.out.println("Received byte[] as string: " + new String(bytes));
+
+                // Check for sequence number in packet where sequence number is final byte of byte[]
+                fileReceiver.processMsg(Msg.GOTSEQ0);
+                //fileReceiver.processMsg(bytes[packetReceived.getLength() - 1] == 0 ? Msg.GOTSEQ0 : Msg.GOTSEQ1);
+
+                // send ack as response to received data
+                socket.send(packetToSend);
+
+            } catch (SocketTimeoutException s) {
+                timeout = true;
+            }
+    }
+
 }
