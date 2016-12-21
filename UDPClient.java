@@ -1,5 +1,3 @@
-package ssiemens.ss16.netzwerke.abgabe6;
-
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -9,7 +7,7 @@ class UDPClient extends Thread {
     // ##########################
     // #### Object variables ####
     // ##########################
-    private final int packetSize;          // Bytes
+    private final int packetSize = 1400;          // Bytes
     private final long sendingDuration;     // Milliseconds
     private final String serverHost;        // Serverhost address or dns name
     private final int serverPort;           // Server port number
@@ -19,8 +17,7 @@ class UDPClient extends Thread {
     // ################
     // ### C'tor    ###
     // ################
-    UDPClient(int packetSize, long sendingDuration, String serverHost, int serverPort, long waitAfterNPackets, long waitForKMillis) {
-        this.packetSize = packetSize;
+    UDPClient(String serverHost, int serverPort, long sendingDuration, long waitAfterNPackets, long waitForKMillis) {
         this.sendingDuration = sendingDuration;
         this.serverHost = serverHost;
         this.serverPort = serverPort;
@@ -74,13 +71,16 @@ class UDPClient extends Thread {
             System.out.println("Client: Sending to: " + getServerHost() + " || On port: " + getServerPort());
             System.out.println("Client: Wait after " + getWaitAfterNPackets() + " packets for " + getWaitForKMillis() + " milliseconds");
             System.out.println("Client: Sending data - Please wait...\r\n");
+            long timeSinceLastWait = startTime;
             while (System.currentTimeMillis() < timeToStop) {
                 datagramSocket.send(datagramPacket);
                 packetsSent++;
                 if (getWaitAfterNPackets() > 0) {
                     if (packetsSent % getWaitAfterNPackets() == 0) {
                         final long timeLeft = timeToStop - System.currentTimeMillis();
-                        sleep(timeLeft < getWaitForKMillis() ? timeLeft : getWaitForKMillis());
+                        long timeToWait = getWaitForKMillis() - (System.currentTimeMillis()-timeSinceLastWait);
+                        sleep(timeLeft < getWaitForKMillis() ? timeLeft : timeToWait);
+                        timeSinceLastWait = System.currentTimeMillis();
                     }
                 }
             }
@@ -92,27 +92,24 @@ class UDPClient extends Thread {
 
         System.out.println("\nUDP CLIENT TRANSMIT FINISHED - Socket closed!");
         System.out.println("---------------------------------------------------");
-
         System.out.println("Client Real duration: " + realDuration + "\r\n");
-
-        System.out.println("Client Bits sent: " + bytesTransferred * 8);
-        System.out.println("Client KBits sent: " + (float)bytesTransferred * 8 / 1000);
-        System.out.println("Client MBits sent: " + (float)bytesTransferred * 8 / 1000);
-
         System.out.println("\nClient Bytes sent: " + bytesTransferred);
-        System.out.println("Client KB sent: " + (float)bytesTransferred / 1_000);
-        System.out.println("Client MB sent: " + (float)bytesTransferred / 1_000_000);
-
-        System.out.println("\nClient Bits/second: " + (bytesTransferred * 8) / ((float)getSendingDuration() / 1000));
-        System.out.println("Client KBits/Second: " + ((float)bytesTransferred * 8 / 1_000) / ((float)getSendingDuration() / 1000));
-        System.out.println("Client MBits/Second: " + ((float)bytesTransferred * 8 / 1_000_000) / ((float)getSendingDuration() / 1000));
-
-        System.out.println("\nClient Bytes/second: " + bytesTransferred / ((float)getSendingDuration() / 1000));
-        System.out.println("Client KB/Second: " + ((float)bytesTransferred / 1_000) / ((float)getSendingDuration() / 1000));
-        System.out.println("Client MB/Second: " + ((float)bytesTransferred / 1_000_000) / ((float)getSendingDuration() / 1000));
+        System.out.println("Client KBits/Second: " + ((float) bytesTransferred * 8 / 1_000) / ((float) getSendingDuration() / 1000));
+        System.out.println("Client MB/Second: " + ((float) bytesTransferred / 1_000_000) / ((float) getSendingDuration() / 1000));
     }
 
     public static void main(String[] args) {
-        new UDPClient(1400,30_000, "localhost", 7777,0,0).start();
+        if (args.length != 5) {
+            System.out.println("Use following parameters: java UDPClient <server-ip or dns name> <port> <sending-duration> <wait after packet count> <for a amount of milliseconds>");
+            throw new IllegalArgumentException("Invalid parameters");
+        }
+
+        final String serverHost = args[0];
+        final int serverPort = Integer.parseInt(args[1]);
+        final int sendingDuration = Integer.parseInt(args[2]);
+        final int waitAfterNPackets = Integer.parseInt(args[3]);
+        final int waitForKMillis = Integer.parseInt(args[4]);
+
+        new UDPClient(serverHost, serverPort, sendingDuration, waitAfterNPackets, waitForKMillis).start();
     }
 }

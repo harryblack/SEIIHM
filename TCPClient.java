@@ -1,5 +1,3 @@
-package ssiemens.ss16.netzwerke.abgabe6;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
@@ -8,35 +6,22 @@ public class TCPClient extends Thread {
     // ##########################
     // #### Object variables ####
     // ##########################
-    private final int packetSize;          // Bytes
+    private final int packetSize = 1400;          // Bytes
     private final long sendingDuration;     // Milliseconds
     private final String serverHost;        // Serverhost address or dns name
     private final int serverPort;           // Server port number
     private final long waitAfterNPackets;   // Waits after the given packet for a given time (@see waitForKMillis)
     private final long waitForKMillis;      // Waits for the given amount of time in milliseconds
-    private final Object outputMonitor;
 
     // ################
     // ### C'tor    ###
     // ################
-    TCPClient(int packetSize, long sendingDuration, String serverHost, int serverPort, long waitAfterNPackets, long waitForKMillis) {
-        this.packetSize = packetSize;
+    TCPClient(String serverHost, int serverPort, long sendingDuration, long waitAfterNPackets, long waitForKMillis) {
         this.sendingDuration = sendingDuration;
         this.serverHost = serverHost;
         this.serverPort = serverPort;
         this.waitAfterNPackets = waitAfterNPackets;
         this.waitForKMillis = waitForKMillis;
-        this.outputMonitor = this;
-    }
-
-    TCPClient(int packetSize, long sendingDuration, String serverHost, int serverPort, long waitAfterNPackets, long waitForKMillis, Object outputMonitor) {
-        this.packetSize = packetSize;
-        this.sendingDuration = sendingDuration;
-        this.serverHost = serverHost;
-        this.serverPort = serverPort;
-        this.waitAfterNPackets = waitAfterNPackets;
-        this.waitForKMillis = waitForKMillis;
-        this.outputMonitor = outputMonitor;
     }
 
     // ################
@@ -66,17 +51,12 @@ public class TCPClient extends Thread {
         return waitForKMillis;
     }
 
-    private Object getOutputMonitor() {
-        return outputMonitor;
-    }
-
     // ###############
     // ### Methods ###
     // ###############
     @Override
     public void run() {
         System.out.println("TCP-Client started...");
-
         final byte[] dataToSent = new byte[getPacketSize()];
         // initial values
         long packetsSentCounter = 0;
@@ -101,31 +81,26 @@ public class TCPClient extends Thread {
         }
         final long realDuration = System.currentTimeMillis() - startTime;
         final long bytesTransferred = getPacketSize() * packetsSentCounter;
-
-        synchronized (getOutputMonitor()) {
-            System.out.println("\nTCP CLIENT TRANSMIT FINISHED - Socket closed!");
-            System.out.println("---------------------------------------------------");
-            System.out.println("Client Real duration: " + realDuration + "\r\n");
-
-            System.out.println("Client Bits sent: " + bytesTransferred * 8);
-            System.out.println("Client KBits sent: " + (float)bytesTransferred * 8 / 1000);
-            System.out.println("Client MBits sent: " + (float)bytesTransferred * 8 / 1000);
-
-            System.out.println("\nClient Bytes sent: " + bytesTransferred);
-            System.out.println("Client KB sent: " + (float)bytesTransferred / 1_000);
-            System.out.println("Client MB sent: " + (float)bytesTransferred / 1_000_000);
-
-            System.out.println("\nClient Bits/second: " + ((float)bytesTransferred * 8) / ((float)getSendingDuration() / 1000));
-            System.out.println("Client KBits/Second: " + ((float)bytesTransferred * 8 / 1_000) / ((float)getSendingDuration() / 1000));
-            System.out.println("Client MBits/Second: " + ((float)bytesTransferred * 8 / 1_000_000) / ((float)getSendingDuration() / 1000));
-
-            System.out.println("\nClient Bytes/second: " + bytesTransferred / (getSendingDuration() / 1000));
-            System.out.println("Client KB/Second: " + ((float)bytesTransferred / 1_000) / ((float)getSendingDuration() / 1000));
-            System.out.println("Client MB/Second: " + ((float)bytesTransferred / 1_000_000) / ((float)getSendingDuration() / 1000));
-        }
+        System.out.println("\nTCP CLIENT TRANSMIT FINISHED - Socket closed!");
+        System.out.println("---------------------------------------------------");
+        System.out.println("Client Real duration: " + realDuration + "\r\n");
+        System.out.println("\nClient Bytes sent: " + bytesTransferred);
+        System.out.println("Client KBits/Second: " + ((float) bytesTransferred * 8 / 1_000) / ((float) getSendingDuration() / 1000));
+        System.out.println("Client MB/Second: " + ((float) bytesTransferred / 1_000_000) / ((float) getSendingDuration() / 1000));
     }
 
-    public static void main(String[] args) {
-         new TCPClient(1400, 30_000, "localhost", 7777, 0, 0, new Object()).start();
+    public static void main(String... args) {
+        if (args.length != 5){
+            System.out.println("Use following parameters: java TCPClient <destination-ip or name> <port> <sending-duration[ms]> <wait after packet count> <for a amount of milliseconds>");
+            throw new IllegalArgumentException("Invalid parameters!");
+        }
+
+        final String serverHost = args[0];
+        final int serverPort = Integer.parseInt(args[1]);
+        final int sendingDuration = Integer.parseInt(args[2]);
+        final int waitAfterNPackets = Integer.parseInt(args[3]);
+        final int waitForKMillis = Integer.parseInt(args[4]);
+
+        new TCPClient(serverHost, serverPort, sendingDuration, waitAfterNPackets, waitForKMillis).start();
     }
 }
