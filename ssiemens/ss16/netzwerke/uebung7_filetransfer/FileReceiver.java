@@ -5,11 +5,16 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.*;
+import java.util.Arrays;
 
 /**
  * Created by Sascha on 20/12/2016.
  */
 public class FileReceiver {
+
+    //****************************************************
+    // File format used: "Hi! <size> <filename>"
+
 
     private static DatagramPacket packetToSend;
     private static DatagramPacket packetReceived;
@@ -107,13 +112,13 @@ public class FileReceiver {
     public static void main(String[] args) throws IOException {
         // Create new FileReceiver
         FileReceiver fileReceiver = new FileReceiver();
-
-        // Create new FileWriter
-        //FileWriter fileWriter = new FileWriter("filetransfer.txt");
-        //PrintWriter printWriter = new PrintWriter(fileWriter);
-
-        // Create Socket for reception of packets
         DatagramSocket socket = new DatagramSocket(7777);
+
+        // Only accept this IP with which initial connection was established
+        InetAddress currentConnectionSender = null;
+        byte[] greetingBytes = null;
+        boolean gotInitialHi = false;
+        boolean gotFirstDataPacket = false;
 
         // Instantiate timeout variable to check for potential socket timeout later
         boolean timeout = false;
@@ -123,12 +128,52 @@ public class FileReceiver {
 
         packetReceived = new DatagramPacket(bytes, bytes.length);
 
+        // Establish connection
+        while (!gotInitialHi) try {
+            socket.setSoTimeout(10_000);
+            socket.receive(packetReceived);
+            if (new String(packetReceived.getData()).startsWith("Hi!")) {
+                gotInitialHi = true;
+                currentConnectionSender = packetReceived.getAddress();
+                greetingBytes = packetReceived.getData();
+                packetToSend = new DatagramPacket(greetingBytes, greetingBytes.length, currentConnectionSender, 7777);
+                socket.send(packetToSend);
+            }
+        } catch (SocketTimeoutException s) {
+            return;
+        }
+
+        while (!gotFirstDataPacket) try {
+            socket.setSoTimeout(10_000);
+            socket.receive(packetReceived);
+            if (!new String(packetReceived.getData()).startsWith("Hi!")) {
+                // store info locally and send ack
+                gotFirstDataPacket = true;
+            } else {
+                packetToSend = new DatagramPacket(greetingBytes, greetingBytes.length, currentConnectionSender, 7777);
+                socket.send(packetToSend);
+            }
+        } catch (SocketTimeoutException s) {
+            return;
+        }
+
         while (!timeout)
             try {
-                // Set socket timeout and wait for file to receive
-                socket.setSoTimeout(10000);
+                socket.setSoTimeout(5_000);
                 socket.receive(packetReceived);
-                socket.setSoTimeout(0);
+
+            } catch (SocketTimeoutException s) {
+                timeout = true;
+            }
+
+
+        while (!timeout)
+            try
+
+            {
+                // Set socket timeout and wait for file to receive
+                socket.setSoTimeout(10_000);
+                socket.receive(packetReceived);
 
                 System.out.println("Packet length: " + packetReceived.getLength());
                 System.out.println("Packet port: " + packetReceived.getPort());
@@ -138,14 +183,17 @@ public class FileReceiver {
 
                 // Check for sequence number in packet where sequence number is final byte of byte[]
                 fileReceiver.processMsg(Msg.GOTSEQ0);
-                //fileReceiver.processMsg(bytes[packetReceived.getLength() - 1] == 0 ? Msg.GOTSEQ0 : Msg.GOTSEQ1);
+                fileReceiver.processMsg(bytes[0] == 0 ? Msg.GOTSEQ0 : Msg.GOTSEQ1);
 
                 // send ack as response to received data
                 socket.send(packetToSend);
 
-            } catch (SocketTimeoutException s) {
+            } catch (
+                    SocketTimeoutException s
+                    )
+
+            {
                 timeout = true;
             }
     }
-
 }
