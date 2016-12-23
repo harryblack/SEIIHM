@@ -109,11 +109,11 @@ public class FileSender {
         public State execute(Msg input) throws IOException {
             System.out.println("INFO Send Hi!");
 
-            final byte[] message = (" Hi! " + sizeOfFile + " " + filename).getBytes();
+            final byte[] message = ("Hi! " + sizeOfFile + " " + filename).getBytes();
             checksum.update(message, 0, message.length);
-            byte[] calculatedCRC = ByteBuffer.allocate(8).putLong(checksum.getValue()).array();
+            byte[] calculatedCRC = ByteBuffer.allocate(4).putInt((int)checksum.getValue()).array();
             System.out.println(Arrays.toString(calculatedCRC));
-            bytesToSend = ByteBuffer.allocate(8 + message.length).put(calculatedCRC).put(message).array();
+            bytesToSend = ByteBuffer.allocate(4 + message.length).put(calculatedCRC).put(message).array();
             System.out.println(Arrays.toString(bytesToSend));
             packetToSend = new DatagramPacket(bytesToSend, bytesToSend.length, InetAddress.getByName(targetHost), targetPort);
             udpSocket.send(packetToSend);
@@ -130,12 +130,23 @@ public class FileSender {
             try {
                 udpSocket.receive(packetReceived);
             } catch (SocketTimeoutException ex) {
-                return State.WAIT_FOR_HI;
+                return State.RETRY_TIMEOUT;
             }
             System.out.println("Length: " + packetReceived.getLength());
             bytesReceived = packetReceived.getData();
-            byte[] receivedChecksumBytes = Arrays.copyOfRange(bytesReceived,0,8);
-            byte[] receivedData = Arrays.copyOfRange(bytesReceived,8,bytesReceived.length);
+            byte[] receivedChecksumBytes = Arrays.copyOfRange(bytesReceived,0,4);
+            byte[] receivedData = Arrays.copyOfRange(bytesReceived,4,bytesReceived.length);
+            checksum.update(receivedData,0,receivedData.length);
+            int receivedChecksum = (int)checksum.getValue();
+
+            if(ByteBuffer.wrap(receivedData).getInt() == receivedChecksum){
+                System.out.println("Checksum OK");
+            } else
+            {
+                System.out.println("Checksum ERROR");
+            }
+
+
             System.out.println(Arrays.toString(receivedChecksumBytes));
             System.out.println(Arrays.toString(receivedData));
 
@@ -231,7 +242,10 @@ public class FileSender {
         //     fileSender.processMsg(Msg.GET_HI);
         // }
 
-        if (fileSender.currentState == State.RETRY_TIMEOUT) return;
+        if (fileSender.currentState == State.RETRY_TIMEOUT) {
+            System.out.println("RETRY TIMEOUT");
+            return;
+        }
 
 
         //Checksum checksum = new CRC32();
