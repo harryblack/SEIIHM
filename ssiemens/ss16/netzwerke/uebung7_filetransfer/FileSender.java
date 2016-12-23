@@ -2,10 +2,7 @@ package ssiemens.ss16.netzwerke.uebung7_filetransfer;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketException;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,9 +29,6 @@ public class FileSender {
     byte[] bytesReceived;
     DatagramPacket packetToSend;
     DatagramPacket packetReceived;
-
-
-
 
 
     // all states for this FSM
@@ -69,6 +63,8 @@ public class FileSender {
         this.filename = filename;
         this.checksum = new CRC32();
         this.targetHost = targetHost;
+        this.bytesReceived = new byte[1400];
+        this.packetReceived = new DatagramPacket(bytesReceived,bytesReceived.length);
 
         // define all valid state transitions for our state machine
         // (undefined transitions will be ignored)
@@ -113,11 +109,13 @@ public class FileSender {
         public State execute(Msg input) throws IOException {
             System.out.println("INFO Send Hi!");
 
-            final byte[] message = (" Hi! "+sizeOfFile+" "+filename).getBytes();
-            checksum.update(message,0,message.length);
+            final byte[] message = (" Hi! " + sizeOfFile + " " + filename).getBytes();
+            checksum.update(message, 0, message.length);
             byte[] calculatedCRC = ByteBuffer.allocate(8).putLong(checksum.getValue()).array();
-            bytesToSend = ByteBuffer.allocate(8+message.length).put(calculatedCRC).put(message).array();
-            packetToSend = new DatagramPacket(bytesToSend,bytesToSend.length, InetAddress.getByName(targetHost), targetPort);
+            System.out.println(Arrays.toString(calculatedCRC));
+            bytesToSend = ByteBuffer.allocate(8 + message.length).put(calculatedCRC).put(message).array();
+            System.out.println(Arrays.toString(bytesToSend));
+            packetToSend = new DatagramPacket(bytesToSend, bytesToSend.length, InetAddress.getByName(targetHost), targetPort);
             udpSocket.send(packetToSend);
 
             return State.WAIT_FOR_HI;
@@ -128,6 +126,21 @@ public class FileSender {
         @Override
         public State execute(Msg input) throws IOException {
             System.out.println("INFO Receive Hi!");
+            udpSocket.setSoTimeout(3_000);
+            try {
+                udpSocket.receive(packetReceived);
+            } catch (SocketTimeoutException ex) {
+                return State.WAIT_FOR_HI;
+            }
+            System.out.println("Length: " + packetReceived.getLength());
+            bytesReceived = packetReceived.getData();
+            byte[] receivedChecksumBytes = Arrays.copyOfRange(bytesReceived,0,8);
+            byte[] receivedData = Arrays.copyOfRange(bytesReceived,8,bytesReceived.length);
+            System.out.println(Arrays.toString(receivedChecksumBytes));
+            System.out.println(Arrays.toString(receivedData));
+
+
+
             return State.WAIT_FOR_SEND_SEQ_ZERO;
         }
     }
@@ -203,7 +216,7 @@ public class FileSender {
         }
 
         // get size of file (number in bytes)
-        final int sizeOfFile = (int)Files.size(fileToCopy);
+        final int sizeOfFile = (int) Files.size(fileToCopy);
 
         // create byte-stream of file-to-copy
         FileInputStream fileInputStream = new FileInputStream(fileName);
@@ -218,7 +231,7 @@ public class FileSender {
         //     fileSender.processMsg(Msg.GET_HI);
         // }
 
-        if(fileSender.currentState == State.RETRY_TIMEOUT) return;
+        if (fileSender.currentState == State.RETRY_TIMEOUT) return;
 
 
         //Checksum checksum = new CRC32();
