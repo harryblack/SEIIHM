@@ -71,7 +71,7 @@ public class FileSender {
         currentState = State.IDLE;
         transition = new Transition[State.values().length][Msg.values().length];
         transition[State.IDLE.ordinal()][Msg.SEND_HI.ordinal()] = new SendHi();
-        transition[State.WAIT_FOR_HI.ordinal()][Msg.GET_HI.ordinal()] = new GetHi();
+        transition[State.WAIT_FOR_HI.ordinal()][Msg.GET_HI.ordinal()] = new WaitForHiResponse();
         transition[State.WAIT_FOR_SEND_SEQ_ZERO.ordinal()][Msg.SEND_SEQ_ZERO.ordinal()] = new SendSeqZero();
         transition[State.WAIT_FOR_ACK_ZERO.ordinal()][Msg.TIMED_OUT_SEQ_ZERO.ordinal()] = new RetransmitSeqZero();
         transition[State.WAIT_FOR_ACK_ZERO.ordinal()][Msg.GOT_ACK_ZERO.ordinal()] = new StopTimerSeqZero();
@@ -110,9 +110,10 @@ public class FileSender {
             System.out.println("INFO Send Hi!");
 
             final byte[] message = ("Hi! " + sizeOfFile + " " + filename).getBytes();
+            System.out.println("messageLength: "+message.length);
             checksum.update(message, 0, message.length);
             byte[] calculatedCRC = ByteBuffer.allocate(4).putInt((int)checksum.getValue()).array();
-            System.out.println(Arrays.toString(calculatedCRC));
+            System.out.println(Arrays.toString(calculatedCRC) + (int)checksum.getValue());
             bytesToSend = ByteBuffer.allocate(4 + message.length).put(calculatedCRC).put(message).array();
             System.out.println(Arrays.toString(bytesToSend));
             packetToSend = new DatagramPacket(bytesToSend, bytesToSend.length, InetAddress.getByName(targetHost), targetPort);
@@ -122,10 +123,10 @@ public class FileSender {
         }
     }
 
-    private class GetHi extends Transition {
+    private class WaitForHiResponse extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
-            System.out.println("INFO Receive Hi!");
+            System.out.println("INFO Wait for Hi-Response!");
             udpSocket.setSoTimeout(3_000);
             try {
                 udpSocket.receive(packetReceived);
@@ -135,11 +136,16 @@ public class FileSender {
             System.out.println("Length: " + packetReceived.getLength());
             bytesReceived = packetReceived.getData();
             byte[] receivedChecksumBytes = Arrays.copyOfRange(bytesReceived,0,4);
-            byte[] receivedData = Arrays.copyOfRange(bytesReceived,4,bytesReceived.length);
+            System.out.println(Arrays.toString(receivedChecksumBytes));
+            byte[] receivedData = Arrays.copyOfRange(bytesReceived,4,packetReceived.getLength());
+            System.out.println(Arrays.toString(receivedData) + " " + receivedData.length);
+            checksum.reset();
             checksum.update(receivedData,0,receivedData.length);
             int receivedChecksum = (int)checksum.getValue();
+            System.out.println("Calculated chk: " +checksum.getValue() );
+            System.out.println("Checksum in first 4 bytes: " + ByteBuffer.wrap(receivedChecksumBytes).getInt());
 
-            if(ByteBuffer.wrap(receivedData).getInt() == receivedChecksum){
+            if(ByteBuffer.wrap(receivedChecksumBytes).getInt() == receivedChecksum){
                 System.out.println("Checksum OK");
             } else
             {
@@ -147,8 +153,8 @@ public class FileSender {
             }
 
 
-            System.out.println(Arrays.toString(receivedChecksumBytes));
-            System.out.println(Arrays.toString(receivedData));
+
+
 
 
 
