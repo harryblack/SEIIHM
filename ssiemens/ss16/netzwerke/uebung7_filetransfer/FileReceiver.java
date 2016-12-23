@@ -2,6 +2,7 @@ package ssiemens.ss16.netzwerke.uebung7_filetransfer;
 
 import java.io.IOException;
 import java.net.*;
+import java.util.Arrays;
 
 /**
  * Created by Sascha on 20/12/2016.
@@ -11,11 +12,14 @@ public class FileReceiver {
     // File format used: "<CRC32> <Hi!> <size> <filename>"
     //                    <4Byte> <xBy> <xBy>   <xBytes>
 
+
     protected final DatagramSocket socket = new DatagramSocket(7777);
     protected static DatagramPacket packetToSend;
     protected static DatagramPacket packetReceived;
     protected final byte[] ACKBytes = new byte[1];
     protected byte[] greetingBytes = null;
+    int currentPacketLength;
+
     byte[] packetAsBytes = new byte[1400];
 
     protected InetAddress currentConnectionSender;
@@ -34,7 +38,7 @@ public class FileReceiver {
 
     // all messages/conditions which can occur
     enum Msg {
-        GOTHI, GOTDATA, GOTSEQ0, GOTSEQ1
+        GOTHI, GOTOTHERDATA, GOTSEQ0, GOTSEQ1
     }
 
     /**
@@ -50,7 +54,7 @@ public class FileReceiver {
 
 
         transition[State.WAITHI.ordinal()][Msg.GOTHI.ordinal()] = new sendHiAfterReceivedHi();
-        //transition[State.WAITHI.ordinal()][Msg.GOTDATA.ordinal()] = new noActionAfterReceivedData();
+        //transition[State.WAITHI.ordinal()][Msg.GOTOTHERDATA.ordinal()] = new noActionAfterReceivedData();
         transition[State.WAITDATA.ordinal()][Msg.GOTHI.ordinal()] = new sendHiAfterReceivedHi();
         transition[State.WAITDATA.ordinal()][Msg.GOTSEQ0.ordinal()] = new ack0AfterReceivedFirstData();
 
@@ -90,9 +94,8 @@ public class FileReceiver {
     class sendHiAfterReceivedHi extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
-            packetToSend.setData(packetReceived.getData());
-            packetToSend.setAddress(packetReceived.getAddress());
-            packetToSend.setPort(7777);
+            byte[] arrayToReturn = Arrays.copyOfRange(packetReceived.getData(), 0, currentPacketLength);
+            packetToSend = new DatagramPacket(arrayToReturn, arrayToReturn.length, packetReceived.getAddress(), 7777);
             socket.send(packetToSend);
             return State.WAITDATA;
         }
