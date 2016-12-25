@@ -28,6 +28,8 @@ public class DoReceiveFiles {
         fileReceiver.socket.setSoTimeout(10_000);
 
         while (!fileReceiver.socketTimeout) try {
+            fileReceiver.packetAsBytes = new byte[1405];
+            fileReceiver.packetReceived = new DatagramPacket(fileReceiver.packetAsBytes, fileReceiver.packetAsBytes.length);
             fileReceiver.socket.receive(fileReceiver.packetReceived);
             fileReceiver.currentPacketLength = fileReceiver.packetReceived.getLength();
             System.out.println("Length of received packet: " + fileReceiver.currentPacketLength);
@@ -55,11 +57,11 @@ public class DoReceiveFiles {
 
                 if (codeString.startsWith("Hi!")) {
                     System.out.println("INFO Code is Hi!");
-                    fileReceiver.socketTimeout = true;
+                    // fileReceiver.socketTimeout = true;
                     fileReceiver.processMsg(FileReceiver.Msg.GOTHI);
                 } else if (codeString.startsWith("0")) {
                     System.out.println("INFO Code is 0");
-
+                    System.out.println("CodeString read from data: " + codeString);
                     fileReceiver.processMsg(FileReceiver.Msg.GOTSEQ0);
                 } else if (codeString.startsWith("1")) {
                     System.out.println("INFO Code is 1");

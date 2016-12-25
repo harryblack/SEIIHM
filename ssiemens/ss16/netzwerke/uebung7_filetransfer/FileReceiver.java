@@ -97,8 +97,8 @@ public class FileReceiver {
         byte[] ACK0WithChecksum = ByteBuffer.allocate(4 + ACKBytes0.length).put(checkSumAck0AsByteArray).put(ACKBytes0).array();
         byte[] ACK1WithChecksum = ByteBuffer.allocate(4 + ACKBytes1.length).put(checkSumAck1AsByteArray).put(ACKBytes1).array();
 
-        packetAck0 = new DatagramPacket(ACK0WithChecksum, ACK0WithChecksum.length, currentSenderAddress, port);
-        packetAck1 = new DatagramPacket(ACK1WithChecksum, ACK1WithChecksum.length, currentSenderAddress, port);
+        packetAck0 = new DatagramPacket(ACK0WithChecksum, ACK0WithChecksum.length);
+        packetAck1 = new DatagramPacket(ACK1WithChecksum, ACK1WithChecksum.length);
 
         System.out.println("INFO FSM constructed, current state: " + currentState);
     }
@@ -131,19 +131,20 @@ public class FileReceiver {
         @Override
         public State execute(Msg input) throws IOException {
             System.out.println("INFO Received Hi!");
+            // Save sender info for packets to be sent
             currentSenderAddress = packetReceived.getAddress();
             currentSenderPort = packetReceived.getPort();
 
             receivedData = Arrays.copyOfRange(packetReceived.getData(), 0, currentPacketLength);
             infoString = new String(Arrays.copyOfRange(receivedData, 4, receivedData.length));
-            System.out.println(infoString);
+            System.out.println("Current infostring: " + infoString);
             String[] infoParts = infoString.split("\\s+");
             totalSize = infoParts[1];
             fileName = infoParts[2];
             outputFile = new File(fileName);
             fileOutputStream = new FileOutputStream(fileName, true);
 
-            packetToSend = new DatagramPacket(receivedData, receivedData.length, currentSenderAddress, 7776);
+            packetToSend = new DatagramPacket(receivedData, receivedData.length, currentSenderAddress, currentSenderPort);
             socket.send(packetToSend);
             return State.WAITDATA;
         }
@@ -153,13 +154,18 @@ public class FileReceiver {
         @Override
         public State execute(Msg input) throws IOException {
             System.out.println("INFO Sending Ack0...");
+            System.out.println("INFO Confirming data:" + new String(packetReceived.getData()));
 
-            receivedData = Arrays.copyOfRange(packetReceived.getData(), 6, currentPacketLength - 6);
+            receivedData = Arrays.copyOfRange(packetReceived.getData(), 6, currentPacketLength);
             infoString = new String(receivedData);
-            String[] infoParts = infoString.split("s");
+            System.out.println("Current infostring: " + infoString);
+            String[] infoParts = infoString.split("\\s+");
             fileOutputStream.write(infoParts[infoParts.length - 1].getBytes());
             fileOutputStream.flush();
 
+            packetAck0.setAddress(currentSenderAddress);
+            packetAck0.setPort(currentSenderPort);
+            System.out.println("now sending packetAck0 with content: " + new String(packetAck0.getData()));
             socket.send(packetAck0);
             return State.WAIT1;
         }
@@ -170,14 +176,19 @@ public class FileReceiver {
         @Override
         public State execute(Msg input) throws IOException {
             System.out.println("INFO Sending Ack0...");
+            System.out.println("INFO Confirming data:" + new String(packetReceived.getData()));
 
             //Folgender Code gleich wie vorher ???
-            receivedData = Arrays.copyOfRange(packetReceived.getData(), 6, currentPacketLength - 6);
+            receivedData = Arrays.copyOfRange(packetReceived.getData(), 6, currentPacketLength);
             infoString = new String(receivedData);
-            String[] infoParts = infoString.split("s");
+            System.out.println("Current infostring: " + infoString);
+            String[] infoParts = infoString.split("\\s+");
             fileOutputStream.write(infoParts[infoParts.length - 1].getBytes());
             fileOutputStream.flush();
 
+            packetAck0.setAddress(currentSenderAddress);
+            packetAck0.setPort(currentSenderPort);
+            System.out.println("now sending packetAck0 with content: " + new String(packetAck0.getData()));
             socket.send(packetAck0);
             return State.WAIT1;
         }
