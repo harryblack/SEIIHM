@@ -30,9 +30,9 @@ public class FileReceiver {
     protected final byte[] ACKBytes1;
     protected byte[] receivedData;
 
-    String infoString = new String();
-    String totalSize = new String();
-    String fileName = new String();
+    String infoString;
+    String totalSize;
+    String fileName;    
     File outputFile;
     FileOutputStream fileOutputStream;
 
