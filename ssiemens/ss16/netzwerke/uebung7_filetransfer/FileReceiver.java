@@ -1,8 +1,13 @@
 package ssiemens.ss16.netzwerke.uebung7_filetransfer;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.*;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.zip.CRC32;
+import java.util.zip.Checksum;
 
 /**
  * Created by Sascha on 20/12/2016.
@@ -12,17 +17,30 @@ public class FileReceiver {
     // File format used: "<CRC32> <Hi!> <size> <filename>"
     //                    <4Byte> <xBy> <xBy>   <xBytes>
 
-
-    protected final DatagramSocket socket = new DatagramSocket(7777);
+    private static int port = 7777;
+    protected final DatagramSocket socket = new DatagramSocket(port);
+    protected boolean socketTimeout = false;
     protected static DatagramPacket packetToSend;
     protected static DatagramPacket packetReceived;
-    protected final byte[] ACKBytes = new byte[1];
-    protected byte[] greetingBytes = null;
-    int currentPacketLength;
+    protected static DatagramPacket packetAck0;
+    protected static DatagramPacket packetAck1;
+    protected static Checksum checksumAck0 = new CRC32();
+    protected static Checksum checksumAck1 = new CRC32();
+    protected final byte[] ACKBytes0;
+    protected final byte[] ACKBytes1;
+    protected byte[] receivedData;
 
-    byte[] packetAsBytes = new byte[1400];
+    String infoString = new String();
+    String totalSize = new String();
+    String fileName = new String();
+    File outputFile;
+    FileOutputStream fileOutputStream;
 
-    protected InetAddress currentConnectionSender;
+    byte[] packetAsBytes = new byte[1405];
+
+    protected int currentPacketLength;
+    protected InetAddress currentSenderAddress;
+    protected int currentSenderPort;
 
 
     // current state of the FSM
@@ -33,12 +51,18 @@ public class FileReceiver {
 
     // all states for this FSM
     enum State {
-        WAITHI, WAITDATA, WAIT0, WAIT1
+        WAITHI,
+        WAITDATA,
+        WAIT0,
+        WAIT1
     }
 
     // all messages/conditions which can occur
     enum Msg {
-        GOTHI, GOTOTHERDATA, GOTSEQ0, GOTSEQ1
+        GOTHI,
+        GOTOTHERDATA,
+        GOTSEQ0,
+        GOTSEQ1
     }
 
     /**
@@ -52,7 +76,6 @@ public class FileReceiver {
         // (undefined transitions will be ignored)
         transition = new Transition[State.values().length][Msg.values().length];
 
-
         transition[State.WAITHI.ordinal()][Msg.GOTHI.ordinal()] = new sendHiAfterReceivedHi();
         //transition[State.WAITHI.ordinal()][Msg.GOTOTHERDATA.ordinal()] = new noActionAfterReceivedData();
         transition[State.WAITDATA.ordinal()][Msg.GOTHI.ordinal()] = new sendHiAfterReceivedHi();
@@ -63,6 +86,19 @@ public class FileReceiver {
         transition[State.WAIT0.ordinal()][Msg.GOTSEQ0.ordinal()] = new sendAck0AfterReceived0();
         transition[State.WAIT0.ordinal()][Msg.GOTSEQ1.ordinal()] = new sendAck0AfterReceived1();
 
+        ACKBytes0 = new byte[]{0};
+        ACKBytes1 = new byte[]{1};
+        checksumAck0.update(ACKBytes0, 0, ACKBytes0.length);
+        checksumAck1.update(ACKBytes1, 0, ACKBytes1.length);
+
+        byte[] checkSumAck0AsByteArray = ByteBuffer.allocate(4).putInt((int) checksumAck0.getValue()).array();
+        byte[] checkSumAck1AsByteArray = ByteBuffer.allocate(4).putInt((int) checksumAck1.getValue()).array();
+
+        byte[] ACK0WithChecksum = ByteBuffer.allocate(4 + ACKBytes0.length).put(checkSumAck0AsByteArray).put(ACKBytes0).array();
+        byte[] ACK1WithChecksum = ByteBuffer.allocate(4 + ACKBytes1.length).put(checkSumAck1AsByteArray).put(ACKBytes1).array();
+
+        packetAck0 = new DatagramPacket(ACK0WithChecksum, ACK0WithChecksum.length, currentSenderAddress, port);
+        packetAck1 = new DatagramPacket(ACK1WithChecksum, ACK1WithChecksum.length, currentSenderAddress, port);
 
         System.out.println("INFO FSM constructed, current state: " + currentState);
     }
@@ -94,26 +130,37 @@ public class FileReceiver {
     class sendHiAfterReceivedHi extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
-            byte[] arrayToReturn = Arrays.copyOfRange(packetReceived.getData(), 0, currentPacketLength);
-            packetToSend = new DatagramPacket(arrayToReturn, arrayToReturn.length, packetReceived.getAddress(), 7777);
+            System.out.println("INFO Received Hi!");
+            currentSenderAddress = packetReceived.getAddress();
+            currentSenderPort = packetReceived.getPort();
+
+            receivedData = Arrays.copyOfRange(packetReceived.getData(), 0, currentPacketLength);
+            infoString = new String(Arrays.copyOfRange(receivedData, 4, receivedData.length));
+            System.out.println(infoString);
+            String[] infoParts = infoString.split("\\s+");
+            totalSize = infoParts[1];
+            fileName = infoParts[2];
+            outputFile = new File(fileName);
+            fileOutputStream = new FileOutputStream(fileName, true);
+
+            packetToSend = new DatagramPacket(receivedData, receivedData.length, currentSenderAddress, 7776);
             socket.send(packetToSend);
             return State.WAITDATA;
         }
     }
 
-    class noActionAfterReceivedData extends Transition {
-        @Override
-        public State execute(Msg input) throws UnknownHostException {
-
-            return State.WAITHI;
-        }
-    }
-
     class ack0AfterReceivedFirstData extends Transition {
         @Override
-        public State execute(Msg input) throws UnknownHostException {
-            System.out.println("Got SEQ0");
+        public State execute(Msg input) throws IOException {
+            System.out.println("INFO Sending Ack0...");
 
+            receivedData = Arrays.copyOfRange(packetReceived.getData(), 6, currentPacketLength - 6);
+            infoString = new String(receivedData);
+            String[] infoParts = infoString.split("s");
+            fileOutputStream.write(infoParts[infoParts.length - 1].getBytes());
+            fileOutputStream.flush();
+
+            socket.send(packetAck0);
             return State.WAIT1;
         }
     }
@@ -121,34 +168,66 @@ public class FileReceiver {
 
     class sendAck0AfterReceived0 extends Transition {
         @Override
-        public State execute(Msg input) throws UnknownHostException {
-            System.out.println("Got SEQ0");
-            ACKBytes[0] = 0;
-            packetToSend = new DatagramPacket(ACKBytes, ACKBytes.length, InetAddress.getByName("localhost"), 7774);
+        public State execute(Msg input) throws IOException {
+            System.out.println("INFO Sending Ack0...");
+
+            //Folgender Code gleich wie vorher ???
+            receivedData = Arrays.copyOfRange(packetReceived.getData(), 6, currentPacketLength - 6);
+            infoString = new String(receivedData);
+            String[] infoParts = infoString.split("s");
+            fileOutputStream.write(infoParts[infoParts.length - 1].getBytes());
+            fileOutputStream.flush();
+
+            socket.send(packetAck0);
             return State.WAIT1;
         }
     }
 
     class sendAck0AfterReceived1 extends Transition {
         @Override
-        public State execute(Msg input) {
-            System.out.println("Got SEQ1");
+        public State execute(Msg input) throws IOException {
+            System.out.println("INFO Sending Ack0...");
+
+            // Folgender Code gleich wie vorher ???
+            receivedData = Arrays.copyOfRange(packetReceived.getData(), 6, currentPacketLength - 6);
+            infoString = new String(receivedData);
+            String[] infoParts = infoString.split("s");
+            fileOutputStream.write(infoParts[infoParts.length - 1].getBytes());
+            fileOutputStream.flush();
+
+            socket.send(packetAck0);
             return State.WAIT0;
         }
     }
 
     class sendAck1AfterReceived0 extends Transition {
         @Override
-        public State execute(Msg input) {
-            System.out.println("Got SEQ0");
+        public State execute(Msg input) throws IOException {
+            System.out.println("INFO Sending Ack1...");
+
+            receivedData = Arrays.copyOfRange(packetReceived.getData(), 6, currentPacketLength - 6);
+            infoString = new String(receivedData);
+            String[] infoParts = infoString.split("s");
+            fileOutputStream.write(infoParts[infoParts.length - 1].getBytes());
+            fileOutputStream.flush();
+
+            socket.send(packetAck1);
             return State.WAIT1;
         }
     }
 
     class sendAck1AfterReceived1 extends Transition {
         @Override
-        public State execute(Msg input) {
-            System.out.println("Got SEQ1");
+        public State execute(Msg input) throws IOException {
+            System.out.println("INFO Sending Ack1...");
+
+            receivedData = Arrays.copyOfRange(packetReceived.getData(), 6, currentPacketLength - 6);
+            infoString = new String(receivedData);
+            String[] infoParts = infoString.split("s");
+            fileOutputStream.write(infoParts[infoParts.length - 1].getBytes());
+            fileOutputStream.flush();
+
+            socket.send(packetAck1);
             return State.WAIT0;
         }
     }
