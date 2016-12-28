@@ -17,7 +17,7 @@ public class FileReceiver {
     // File format used: "<CRC32> <Hi!> <size> <filename>"
     //                    <4Byte> <xBy> <xBy>   <xBytes>
 
-    private static int port = 7778;
+    private static int port = 7777;
     protected final DatagramSocket socket = new DatagramSocket(port);
     protected boolean socketTimeout = false;
     protected static DatagramPacket packetToSend;

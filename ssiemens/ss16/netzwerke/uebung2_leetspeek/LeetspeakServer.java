@@ -23,6 +23,8 @@ public class LeetspeakServer extends Thread {
         replaceWordToLeedspeek.put("Studierende", "57ud13r3nd3");
         replaceWordToLeedspeek.put("Windows", "w1nd0w5");
         replaceWordToLeedspeek.put("Linux", "l1nux");
+        replaceWordToLeedspeek.put("Bahnhof", "Flughafen");
+        replaceWordToLeedspeek.put("Mailand", "Madrid");
     }
 
 
@@ -97,7 +99,7 @@ public class LeetspeakServer extends Thread {
 
                 if (responseFromTargetHost.contains("<html") && responseFromTargetHost.contains("html>")) {
                     // Manipulate images \[(.*?)\]
-                    responseFromTargetHost = responseFromTargetHost.replaceAll("<img src=\"[^\\s]+\"", "<img src=\"http://fi.cs.hm.edu/fi/hm-logo.png\"");
+                    responseFromTargetHost = responseFromTargetHost.replaceAll("<img src=\"[^\\s]+\"", "<img src=\"https://projects.ncsu.edu/cals/course/ent425/images/compendium/lepidoptera/butter1b.gif\"");
 
                     // Manipulate words
                     for (String originalWord : replaceWordToLeedspeek.keySet())

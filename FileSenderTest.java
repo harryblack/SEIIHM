@@ -1,3 +1,5 @@
+import javafx.scene.chart.XYChart;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.*;
@@ -131,10 +133,12 @@ public class FileSenderTest {
         @Override
         public State execute(Msg input) throws IOException {
             System.out.println("INFO Wait for Hi-Response!");
+            DatagramPacket test = new DatagramPacket(new byte[1500],1500,InetAddress.getByName("localhost"),7777);
 
             udpSocket.setSoTimeout(3_000);
             try {
-                udpSocket.receive(packetReceived);
+                //udpSocket.receive(packetReceived);
+                udpSocket.receive(test);
                 rttStop = System.currentTimeMillis();
             } catch (SocketTimeoutException ex) {
                 System.out.println("TIMEOUT-HI");
@@ -145,7 +149,8 @@ public class FileSenderTest {
                     return State.SERVER_UNREACHABLE;
                 }
             }
-            bytesReceived = Arrays.copyOfRange(packetReceived.getData(), 0, packetReceived.getLength());
+            //bytesReceived = Arrays.copyOfRange(packetReceived.getData(), 0, packetReceived.getLength());
+            bytesReceived = Arrays.copyOfRange(test.getData(), 0, test.getLength());
             final boolean packetIsValid = crc32Check(bytesReceived);
             if (!packetIsValid) return State.WAIT_FOR_HI;
             final boolean responseIsValid = Arrays.equals(hiMessage.getBytes(), Arrays.copyOfRange(bytesReceived, 4, bytesReceived.length));
@@ -163,7 +168,7 @@ public class FileSenderTest {
         @Override
         public State execute(Msg input) throws IOException {
             System.out.println("INFO Send sequence number: " + (sequenzNumberIsZero ? 0 : 1));
-
+            packetReceived.setPort(7777);
             int sequenceNumber = sequenzNumberIsZero ? 0 : 1;
 
             bytesToSend = new byte[1400];
@@ -176,6 +181,7 @@ public class FileSenderTest {
             copyBytesToSend = Arrays.copyOf(bytesToSend, bytesToSend.length);
 
             packetToSend = new DatagramPacket(bytesToSend, bytesToSend.length, InetAddress.getByName(targetHost), targetPort);
+            System.out.println(Arrays.toString(packetToSend.getData()));
             rttStart = System.currentTimeMillis();
             udpSocket.send(packetToSend);
             return sequenzNumberIsZero ? State.WAIT_FOR_ACK_ZERO : State.WAIT_FOR_ACK_ONE;
@@ -184,15 +190,17 @@ public class FileSenderTest {
 
     private class WaitForAck extends Transition {
         @Override
-        public State execute(Msg input) {
+        public State execute(Msg input) throws UnknownHostException {
             bytesReceived = new byte[1500];
             int sequenceNumber = sequenzNumberIsZero ? 0 : 1;
+            DatagramPacket test = new DatagramPacket(new byte[1500],1500,InetAddress.getByName("localhost"),8888);
 
             System.out.println("INFO Wait for ACK: " + (sequenzNumberIsZero ? 0 : 1));
             timeout = (long) (0.875 * timeout + 0.125 * rtt);
             try {
                 udpSocket.setSoTimeout((int) timeout + 3);        // In the unlike event of a rtt of 0 (localhost) there will be 3 ms added additionally
-                udpSocket.receive(packetReceived);
+                //udpSocket.receive(packetReceived);
+                udpSocket.receive(test);
                 rttStop = System.currentTimeMillis();
             } catch (SocketTimeoutException ex) {
                 System.out.println("ERROR Receive-SocketTimeoutException");
@@ -202,7 +210,9 @@ public class FileSenderTest {
                 System.out.println("ERROR IOException");
                 return currentState;
             }
-            bytesReceived = Arrays.copyOfRange(packetReceived.getData(), 0, packetReceived.getLength());
+            //bytesReceived = Arrays.copyOfRange(packetReceived.getData(), 0, packetReceived.getLength());
+            bytesReceived = Arrays.copyOfRange(test.getData(), 0, test.getLength());
+            System.out.println(Arrays.toString(bytesReceived));
             System.out.println("Length bytesReceived: "+ bytesReceived.length);
             final boolean packetIsValid = crc32Check(bytesReceived);
             if (!packetIsValid) {
@@ -215,6 +225,7 @@ public class FileSenderTest {
                 System.out.println("WRONG ACK-NR - Got: " + bytesReceived[4] + " Length: " + bytesReceived.length);
                 return currentState;
             }
+
             rtt = rttStop - rttStart;
             sequenzNumberIsZero = !sequenzNumberIsZero;
             return sequenzNumberIsZero ? State.WAIT_FOR_SEND_SEQ_ZERO : State.WAIT_FOR_SEND_SEQ_ONE;
