@@ -275,7 +275,7 @@ public class FileSender {
         FileInputStream fileInputStream = new FileInputStream(fileName);
 
         // create UDP-Socket
-        try (DatagramSocket udpSocket = new SkipPacketsDecorator(7777, 0.2)) {
+        try (DatagramSocket udpSocket = new DatagramSocket()) {
             // create FileSender
             FileSender fileSender = new FileSender(udpSocket, fileInputStream, sizeOfFile, fileName, targetHost);
 

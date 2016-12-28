@@ -12,7 +12,7 @@ import java.util.zip.Checksum;
 /**
  * Class which models the state machine itself.
  */
-public class FileSender {
+public class FileSenderTest {
     // Final object variables
     private final DatagramSocket udpSocket;
     private final String targetHost;
@@ -24,7 +24,7 @@ public class FileSender {
     private final String hiMessage;
 
     // Object variables
-    private byte[] bytesToSend;
+    private byte[] bytesToSend  ;
     private byte[] bytesReceived;
     private DatagramPacket packetToSend;
     private DatagramPacket packetReceived;
@@ -60,7 +60,7 @@ public class FileSender {
     /**
      * constructor
      */
-    public FileSender(DatagramSocket udpSocket, FileInputStream fileInputStream, int sizeOfFile, String filename, String targetHost) throws SocketException {
+    public FileSenderTest(DatagramSocket udpSocket, FileInputStream fileInputStream, int sizeOfFile, String filename, String targetHost) throws SocketException {
         this.udpSocket = udpSocket;
         this.fileInputStream = fileInputStream;
         this.sizeOfFile = sizeOfFile;
@@ -166,7 +166,7 @@ public class FileSender {
 
             int sequenceNumber = sequenzNumberIsZero ? 0 : 1;
 
-            bytesToSend = new byte[500];
+            bytesToSend = new byte[1400];
             int numberOfBytesRead = fileInputStream.read(bytesToSend);
             if (numberOfBytesRead == -1) return State.FINISH; // end of file reached
             byte[] dataToSend = ByteBuffer.allocate(1 + numberOfBytesRead).put((byte) sequenceNumber).put(Arrays.copyOfRange(bytesToSend, 0, numberOfBytesRead)).array();
@@ -175,7 +175,6 @@ public class FileSender {
             bytesToSend = ByteBuffer.allocate(crc32.length + dataToSend.length).put(crc32).put(dataToSend).array();
             copyBytesToSend = Arrays.copyOf(bytesToSend, bytesToSend.length);
 
-            System.out.println(bytesToSend.length);
             packetToSend = new DatagramPacket(bytesToSend, bytesToSend.length, InetAddress.getByName(targetHost), targetPort);
             rttStart = System.currentTimeMillis();
             udpSocket.send(packetToSend);
@@ -186,37 +185,33 @@ public class FileSender {
     private class WaitForAck extends Transition {
         @Override
         public State execute(Msg input) {
-
+            bytesReceived = new byte[1500];
             int sequenceNumber = sequenzNumberIsZero ? 0 : 1;
 
             System.out.println("INFO Wait for ACK: " + (sequenzNumberIsZero ? 0 : 1));
             timeout = (long) (0.875 * timeout + 0.125 * rtt);
-            System.out.println("Timeout: " +timeout);
             try {
                 udpSocket.setSoTimeout((int) timeout + 3);        // In the unlike event of a rtt of 0 (localhost) there will be 3 ms added additionally
-            } catch (SocketException e) {
-                System.out.println("SocketException");
-            }
-            try {
                 udpSocket.receive(packetReceived);
                 rttStop = System.currentTimeMillis();
             } catch (SocketTimeoutException ex) {
-                System.out.println("TIMEOUT");
+                System.out.println("ERROR Receive-SocketTimeoutException");
                 timeout = timeout * 2;
                 return currentState;
             } catch (IOException e) {
-                System.out.println("IOException");
+                System.out.println("ERROR IOException");
+                return currentState;
             }
             bytesReceived = Arrays.copyOfRange(packetReceived.getData(), 0, packetReceived.getLength());
             System.out.println("Length bytesReceived: "+ bytesReceived.length);
             final boolean packetIsValid = crc32Check(bytesReceived);
             if (!packetIsValid) {
-                System.out.println("CRC32-ERROR");
+                System.out.println("ERROR CRC32-Validation failed!");
                 return currentState;
             }
 
-            final boolean ackHasZero = (int) bytesReceived[4] == sequenceNumber;
-            if (!ackHasZero) {
+            final boolean ackHasSeqNumber = (int) bytesReceived[4] == sequenceNumber;
+            if (!ackHasSeqNumber) {
                 System.out.println("WRONG ACK-NR - Got: " + bytesReceived[4] + " Length: " + bytesReceived.length);
                 return currentState;
             }
@@ -230,9 +225,6 @@ public class FileSender {
         @Override
         public State execute(Msg input) throws IOException {
             System.out.println("Retransmit Seq: " + (sequenzNumberIsZero ? 0 : 1));
-            System.out.println(Arrays.toString(copyBytesToSend));
-
-            packetToSend = new DatagramPacket(copyBytesToSend, copyBytesToSend.length, InetAddress.getByName(targetHost), targetPort);
             rttStart = System.currentTimeMillis();
             udpSocket.send(packetToSend);
             return sequenzNumberIsZero ? State.WAIT_FOR_ACK_ZERO : State.WAIT_FOR_ACK_ONE;
@@ -270,9 +262,9 @@ public class FileSender {
         FileInputStream fileInputStream = new FileInputStream(fileName);
 
         // create UDP-Socket
-        try (DatagramSocket udpSocket = new SkipPacketsDecorator(7777, 0.2)) {
+        try (DatagramSocket udpSocket = new DatagramSocket(8888)) {
             // create FileSender
-            FileSender fileSender = new FileSender(udpSocket, fileInputStream, sizeOfFile, fileName, targetHost);
+            FileSenderTest fileSender = new FileSenderTest(udpSocket, fileInputStream, sizeOfFile, fileName, targetHost);
 
 
             // START COMMUNICATION WITH TARGET HOST
@@ -285,18 +277,20 @@ public class FileSender {
             }
 
             if (fileSender.currentState == State.SERVER_UNREACHABLE) {
-                System.out.println("RETRY TIMEOUT");
+                System.out.println("ERROR SERVER UNREACHABLE!");
                 return;
             }
 
             // START FILE TRANSFER
             while (fileSender.currentState != State.FINISH) {
                 fileSender.processMsg(Msg.SEND_SEQ);
-                State stateBefore = fileSender.currentState;
-                fileSender.processMsg(Msg.WAIT_FOR_ACK);
-                while (fileSender.currentState != State.FINISH && fileSender.currentState == stateBefore) {
-                    fileSender.processMsg(Msg.RETRANSMIT);
+                if(fileSender.currentState != State.FINISH){
+                    State stateBefore = fileSender.currentState;
                     fileSender.processMsg(Msg.WAIT_FOR_ACK);
+                    while (fileSender.currentState == stateBefore) {
+                        fileSender.processMsg(Msg.RETRANSMIT);
+                        fileSender.processMsg(Msg.WAIT_FOR_ACK);
+                    }
                 }
             }
 
