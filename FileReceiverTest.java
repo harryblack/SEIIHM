@@ -130,6 +130,9 @@ public class FileReceiverTest {
                 System.out.println("ERROR - Hi-Message has wrong format");
                 return State.WAIT_FOR_HI;
             }
+
+            ipFromSender = receivedPacket.getAddress();
+
             System.out.println("filesize: " + sizeOfFile + " filename: " + filename);
 
             // create file
@@ -233,7 +236,7 @@ public class FileReceiverTest {
             System.out.println(Arrays.toString(data));
 
             packetToSent = new DatagramPacket(data, data.length, ipFromSender, 8888);
-            udpSocket.send(receivedPacket);
+            udpSocket.send(packetToSent);
             return State.WAIT_FOR_SEQ_ONE;
         }
     }
@@ -247,7 +250,7 @@ public class FileReceiverTest {
             System.out.println(Arrays.toString(data));
 
             packetToSent = new DatagramPacket(data, data.length, ipFromSender, 8888);
-            udpSocket.send(receivedPacket);
+            udpSocket.send(packetToSent);
             return State.WAIT_FOR_SEQ_ZERO;
         }
     }
@@ -260,36 +263,26 @@ public class FileReceiverTest {
         try (DatagramSocket udpSocket = new DatagramSocket(7777)) {
             FileReceiverTest fileReceiver = new FileReceiverTest(udpSocket);
 
-            //while (fileReceiver.currentState == State.WAIT_FOR_HI)
+            while (fileReceiver.currentState == State.WAIT_FOR_HI)
                 fileReceiver.processMsg(Msg.GET_HI);
 
-            //while (fileReceiver.currentState == State.WAIT_FOR_FIRST_PACKET) {
+            while (fileReceiver.currentState == State.WAIT_FOR_FIRST_PACKET) {
                 fileReceiver.processMsg(Msg.SEND_RESPONSE_HI);
                 fileReceiver.processMsg(Msg.GET_SEQ_ZERO);
-            //}
+            }
 
-            //while (fileReceiver.currentState != State.FINISH) {
-              //  while (fileReceiver.currentState == State.WAIT_FOR_SEQ_ONE) {
+            while (fileReceiver.currentState != State.FINISH) {
+                while (fileReceiver.currentState == State.WAIT_FOR_SEQ_ONE) {
                     fileReceiver.processMsg(Msg.SEND_ACK_ZERO);
                     fileReceiver.processMsg(Msg.GET_SEQ_ONE);
-                //}
+                }
 
-                //while (fileReceiver.currentState == State.WAIT_FOR_SEQ_ZERO) {
+                while (fileReceiver.currentState == State.WAIT_FOR_SEQ_ZERO) {
                     fileReceiver.processMsg(Msg.SEND_ACK_ONE);
                     fileReceiver.processMsg(Msg.GET_SEQ_ZERO);
-                //}
-            //}
-
-            fileReceiver.processMsg(Msg.SEND_ACK_ZERO);
-            fileReceiver.processMsg(Msg.GET_SEQ_ONE);
-            fileReceiver.processMsg(Msg.SEND_ACK_ONE);
-            fileReceiver.processMsg(Msg.GET_SEQ_ZERO);
-
-            fileReceiver.processMsg(Msg.SEND_ACK_ZERO);
-            fileReceiver.processMsg(Msg.GET_SEQ_ONE);
-            fileReceiver.processMsg(Msg.SEND_ACK_ONE);
-            fileReceiver.processMsg(Msg.GET_SEQ_ZERO);
-
+                }
+            }
+            System.out.println("File: " + fileReceiver.filename + "received succesfully!");
         }
     }
 

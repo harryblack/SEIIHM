@@ -193,14 +193,12 @@ public class FileSenderTest {
         public State execute(Msg input) throws UnknownHostException {
             bytesReceived = new byte[1500];
             int sequenceNumber = sequenzNumberIsZero ? 0 : 1;
-            DatagramPacket test = new DatagramPacket(new byte[1500],1500,InetAddress.getByName("localhost"),8888);
 
             System.out.println("INFO Wait for ACK: " + (sequenzNumberIsZero ? 0 : 1));
             timeout = (long) (0.875 * timeout + 0.125 * rtt);
             try {
                 udpSocket.setSoTimeout((int) timeout + 3);        // In the unlike event of a rtt of 0 (localhost) there will be 3 ms added additionally
-                //udpSocket.receive(packetReceived);
-                udpSocket.receive(test);
+                udpSocket.receive(packetReceived);
                 rttStop = System.currentTimeMillis();
             } catch (SocketTimeoutException ex) {
                 System.out.println("ERROR Receive-SocketTimeoutException");
@@ -210,8 +208,10 @@ public class FileSenderTest {
                 System.out.println("ERROR IOException");
                 return currentState;
             }
-            //bytesReceived = Arrays.copyOfRange(packetReceived.getData(), 0, packetReceived.getLength());
-            bytesReceived = Arrays.copyOfRange(test.getData(), 0, test.getLength());
+
+            if(packetReceived.getLength() != 5) return currentState;
+
+            bytesReceived = Arrays.copyOfRange(packetReceived.getData(), 0, packetReceived.getLength());
             System.out.println(Arrays.toString(bytesReceived));
             System.out.println("Length bytesReceived: "+ bytesReceived.length);
             final boolean packetIsValid = crc32Check(bytesReceived);
