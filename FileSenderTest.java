@@ -1,5 +1,3 @@
-import javafx.scene.chart.XYChart;
-
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.*;
@@ -37,7 +35,7 @@ public class FileSenderTest {
     private long timeout;
     private boolean sequenzNumberIsZero;
     private byte[] copyBytesToSend;
-    private boolean wrongAckNumber;
+    private boolean unexpectedAck;
 
 
     // all states for this FSM
@@ -74,7 +72,7 @@ public class FileSenderTest {
         this.packetReceived = new DatagramPacket(bytesReceived, bytesReceived.length);
         this.hiMessage = "Hi! " + sizeOfFile + " " + filename;
         this.sequenzNumberIsZero = true;
-        this.wrongAckNumber = false;
+        this.unexpectedAck = false;
 
         // define all valid state transitions for our state machine
         // (undefined transitions will be ignored)
@@ -220,6 +218,7 @@ public class FileSenderTest {
 
             if (packetReceived.getLength() != 5) {
                 System.out.println("ERROR RESPONSE DOES NOT HAVE 5 BYTES");
+                unexpectedAck = true;
                 return currentState;
             }
 
@@ -233,7 +232,7 @@ public class FileSenderTest {
             final boolean ackHasSeqNumber = (int) bytesReceived[4] == sequenceNumber;
             if (!ackHasSeqNumber) {
                 System.out.println("WRONG ACK-NR - Got: " + bytesReceived[4] + " Length: " + bytesReceived.length);
-                wrongAckNumber = true;
+                unexpectedAck = true;
                 return currentState;
             }
 
@@ -318,7 +317,7 @@ public class FileSenderTest {
                 State stateBefore = fileSender.currentState;
                 fileSender.processMsg(Msg.WAIT_FOR_ACK);
                 while (fileSender.currentState != State.FINISH && fileSender.currentState == stateBefore) {
-                    if(!fileSender.wrongAckNumber){
+                    if(!fileSender.unexpectedAck){
                         fileSender.processMsg(Msg.RETRANSMIT);
                     }
                     fileSender.processMsg(Msg.WAIT_FOR_ACK);
