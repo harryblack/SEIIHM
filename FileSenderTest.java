@@ -158,7 +158,7 @@ public class FileSenderTest {
             if (!responseIsValid) return State.WAIT_FOR_HI;
             bytesToSend = new byte[1405];
             rtt = rttStop - rttStart;
-            timeout = rtt * 2;
+            timeout = rtt * 2 + 100;
             udpSocket.setSoTimeout((int) timeout);
 
             return State.WAIT_FOR_SEND_SEQ_ZERO;
@@ -168,14 +168,11 @@ public class FileSenderTest {
     private class SendSeq extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
-
-
             System.out.println("INFO Send sequence number: " + (sequenzNumberIsZero ? 0 : 1));
             packetReceived.setPort(7777);
             int sequenceNumber = sequenzNumberIsZero ? 0 : 1;
 
             bytesToSend = new byte[1400];
-            System.out.println("Read from file");
             int numberOfBytesRead = fileInputStream.read(bytesToSend);
 
             if (numberOfBytesRead == -1) {
@@ -188,7 +185,6 @@ public class FileSenderTest {
             copyBytesToSend = Arrays.copyOf(bytesToSend, bytesToSend.length);
 
             packetToSend = new DatagramPacket(bytesToSend, bytesToSend.length, InetAddress.getByName(targetHost), targetPort);
-            System.out.println(Arrays.toString(packetToSend.getData()));
             rttStart = System.currentTimeMillis();
             udpSocket.send(packetToSend);
             return sequenzNumberIsZero ? State.WAIT_FOR_ACK_ZERO : State.WAIT_FOR_ACK_ONE;
@@ -198,19 +194,19 @@ public class FileSenderTest {
     private class WaitForAck extends Transition {
         @Override
         public State execute(Msg input) throws UnknownHostException {
+            System.out.println("INFO Wait for ACK: " + (sequenzNumberIsZero ? 0 : 1));
 
 
             bytesReceived = new byte[1500];
             int sequenceNumber = sequenzNumberIsZero ? 0 : 1;
 
-            System.out.println("INFO Wait for ACK: " + (sequenzNumberIsZero ? 0 : 1));
             timeout = (long) (0.875 * timeout + 0.125 * rtt);
             try {
-                udpSocket.setSoTimeout((int) timeout + 500);        // In the unlike event of a rtt of 0 (localhost) there will be 3 ms added additionally
+                udpSocket.setSoTimeout((int) timeout);        // In the unlike event of a rtt of 0 (localhost) there will be 3 ms added additionally
                 udpSocket.receive(packetReceived);
                 rttStop = System.currentTimeMillis();
             } catch (SocketTimeoutException ex) {
-                System.out.println("ERROR Receive-SocketTimeoutException");
+                System.out.println("ERROR Receive-SocketTimeoutException - timeout value: "+timeout);
                 timeout = timeout * 2;
                 return currentState;
             } catch (IOException e) {
@@ -218,14 +214,14 @@ public class FileSenderTest {
                 return currentState;
             }
 
+            System.out.println(Arrays.toString(Arrays.copyOfRange(packetReceived.getData(), 0, packetReceived.getLength())));
+
             if (packetReceived.getLength() != 5) {
                 System.out.println("ERROR RESPONSE DOES NOT HAVE 5 BYTES");
                 return currentState;
             }
 
             bytesReceived = Arrays.copyOfRange(packetReceived.getData(), 0, packetReceived.getLength());
-            System.out.println(Arrays.toString(bytesReceived));
-            System.out.println("Length bytesReceived: " + bytesReceived.length);
             final boolean packetIsValid = crc32Check(bytesReceived);
             if (!packetIsValid) {
                 System.out.println("ERROR CRC32-Validation failed!");
@@ -294,7 +290,7 @@ public class FileSenderTest {
         FileInputStream fileInputStream = new FileInputStream(fileName);
 
         // create UDP-Socket
-        try (DatagramSocket udpSocket = new DatagramSocket(8888)) {
+        try (DatagramSocket udpSocket = new SkipPacketsDecorator(8888,0.0,0.1,0.0)) {
             // create FileSender
             FileSenderTest fileSender = new FileSenderTest(udpSocket, fileInputStream, sizeOfFile, fileName, targetHost);
 

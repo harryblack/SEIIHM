@@ -260,7 +260,7 @@ public class FileReceiverTest {
      * MAIN
      */
     public static void main(String[] ignored) throws IOException {
-        try (DatagramSocket udpSocket = new SkipPacketsDecorator(7777, 0.2)) {
+        try (DatagramSocket udpSocket = new DatagramSocket(7777)) {
             FileReceiverTest fileReceiver = new FileReceiverTest(udpSocket);
 
             while (fileReceiver.currentState == State.WAIT_FOR_HI)
