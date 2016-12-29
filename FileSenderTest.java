@@ -26,7 +26,7 @@ public class FileSenderTest {
     private final String hiMessage;
 
     // Object variables
-    private byte[] bytesToSend  ;
+    private byte[] bytesToSend;
     private byte[] bytesReceived;
     private DatagramPacket packetToSend;
     private DatagramPacket packetReceived;
@@ -89,6 +89,7 @@ public class FileSenderTest {
         transition[State.WAIT_FOR_SEND_SEQ_ONE.ordinal()][Msg.SEND_SEQ.ordinal()] = new SendSeq();
         transition[State.WAIT_FOR_ACK_ONE.ordinal()][Msg.WAIT_FOR_ACK.ordinal()] = new WaitForAck();
         transition[State.WAIT_FOR_ACK_ONE.ordinal()][Msg.RETRANSMIT.ordinal()] = new Retransmit();
+        transition[State.FINISH.ordinal()][Msg.WAIT_FOR_ACK.ordinal()] = new DoNothing();
         System.out.println("INFO FSM constructed, current state: " + currentState);
     }
 
@@ -133,7 +134,7 @@ public class FileSenderTest {
         @Override
         public State execute(Msg input) throws IOException {
             System.out.println("INFO Wait for Hi-Response!");
-            DatagramPacket test = new DatagramPacket(new byte[1500],1500,InetAddress.getByName("localhost"),7777);
+            DatagramPacket test = new DatagramPacket(new byte[1500], 1500, InetAddress.getByName("localhost"), 7777);
 
             udpSocket.setSoTimeout(3_000);
             try {
@@ -167,13 +168,19 @@ public class FileSenderTest {
     private class SendSeq extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
+
+
             System.out.println("INFO Send sequence number: " + (sequenzNumberIsZero ? 0 : 1));
             packetReceived.setPort(7777);
             int sequenceNumber = sequenzNumberIsZero ? 0 : 1;
 
             bytesToSend = new byte[1400];
+            System.out.println("Read from file");
             int numberOfBytesRead = fileInputStream.read(bytesToSend);
-            if (numberOfBytesRead == -1) return State.FINISH; // end of file reached
+
+            if (numberOfBytesRead == -1) {
+                return State.FINISH; // end of file reached
+            }
             byte[] dataToSend = ByteBuffer.allocate(1 + numberOfBytesRead).put((byte) sequenceNumber).put(Arrays.copyOfRange(bytesToSend, 0, numberOfBytesRead)).array();
             byte[] crc32 = getCRC32InBytes(dataToSend);
 
@@ -191,13 +198,15 @@ public class FileSenderTest {
     private class WaitForAck extends Transition {
         @Override
         public State execute(Msg input) throws UnknownHostException {
+
+
             bytesReceived = new byte[1500];
             int sequenceNumber = sequenzNumberIsZero ? 0 : 1;
 
             System.out.println("INFO Wait for ACK: " + (sequenzNumberIsZero ? 0 : 1));
             timeout = (long) (0.875 * timeout + 0.125 * rtt);
             try {
-                udpSocket.setSoTimeout((int) timeout + 3);        // In the unlike event of a rtt of 0 (localhost) there will be 3 ms added additionally
+                udpSocket.setSoTimeout((int) timeout + 500);        // In the unlike event of a rtt of 0 (localhost) there will be 3 ms added additionally
                 udpSocket.receive(packetReceived);
                 rttStop = System.currentTimeMillis();
             } catch (SocketTimeoutException ex) {
@@ -209,11 +218,14 @@ public class FileSenderTest {
                 return currentState;
             }
 
-            if(packetReceived.getLength() != 5) return currentState;
+            if (packetReceived.getLength() != 5) {
+                System.out.println("ERROR RESPONSE DOES NOT HAVE 5 BYTES");
+                return currentState;
+            }
 
             bytesReceived = Arrays.copyOfRange(packetReceived.getData(), 0, packetReceived.getLength());
             System.out.println(Arrays.toString(bytesReceived));
-            System.out.println("Length bytesReceived: "+ bytesReceived.length);
+            System.out.println("Length bytesReceived: " + bytesReceived.length);
             final boolean packetIsValid = crc32Check(bytesReceived);
             if (!packetIsValid) {
                 System.out.println("ERROR CRC32-Validation failed!");
@@ -239,6 +251,15 @@ public class FileSenderTest {
             rttStart = System.currentTimeMillis();
             udpSocket.send(packetToSend);
             return sequenzNumberIsZero ? State.WAIT_FOR_ACK_ZERO : State.WAIT_FOR_ACK_ONE;
+        }
+    }
+
+
+    private class DoNothing extends Transition {
+        @Override
+        public State execute(Msg input) throws IOException {
+            System.out.println("DoNothing");
+            return State.FINISH;
         }
     }
 
@@ -295,14 +316,13 @@ public class FileSenderTest {
             // START FILE TRANSFER
             while (fileSender.currentState != State.FINISH) {
                 fileSender.processMsg(Msg.SEND_SEQ);
-                if(fileSender.currentState != State.FINISH){
-                    State stateBefore = fileSender.currentState;
+                State stateBefore = fileSender.currentState;
+                fileSender.processMsg(Msg.WAIT_FOR_ACK);
+                while (fileSender.currentState != State.FINISH && fileSender.currentState == stateBefore) {
+                    fileSender.processMsg(Msg.RETRANSMIT);
                     fileSender.processMsg(Msg.WAIT_FOR_ACK);
-                    while (fileSender.currentState == stateBefore) {
-                        fileSender.processMsg(Msg.RETRANSMIT);
-                        fileSender.processMsg(Msg.WAIT_FOR_ACK);
-                    }
                 }
+
             }
 
         }

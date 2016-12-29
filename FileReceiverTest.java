@@ -151,7 +151,7 @@ public class FileReceiverTest {
             packetToSent = new DatagramPacket(dataReceived, dataReceived.length, ipFromSender, 8888);
             System.out.println(new String(packetToSent.getData()));
             udpSocket.send(receivedPacket);
-            udpSocket.setSoTimeout(10_000);
+            udpSocket.setSoTimeout(30_000);
             return State.WAIT_FOR_FIRST_PACKET;
         }
     }
@@ -168,7 +168,7 @@ public class FileReceiverTest {
             }
 
             // Check sender ip address
-            if (!receivedPacket.getAddress().equals(ipFromSender)) {
+            if (!ipFromSender.equals(receivedPacket.getAddress())) {
                 System.out.println("ERROR - Packet from different host");
                 return currentState;
             }
@@ -203,7 +203,7 @@ public class FileReceiverTest {
                 return State.FINISH;
             }
             // Check sender ip address
-            if (!receivedPacket.getAddress().equals(ipFromSender)) {
+            if (!ipFromSender.equals(receivedPacket.getAddress())) {
                 System.out.println("ERROR - Packet from different host");
                 return currentState;
             }
@@ -260,7 +260,7 @@ public class FileReceiverTest {
      * MAIN
      */
     public static void main(String[] ignored) throws IOException {
-        try (DatagramSocket udpSocket = new DatagramSocket(7777)) {
+        try (DatagramSocket udpSocket = new SkipPacketsDecorator(7777, 0.2)) {
             FileReceiverTest fileReceiver = new FileReceiverTest(udpSocket);
 
             while (fileReceiver.currentState == State.WAIT_FOR_HI)
@@ -282,7 +282,7 @@ public class FileReceiverTest {
                     fileReceiver.processMsg(Msg.GET_SEQ_ZERO);
                 }
             }
-            System.out.println("File: " + fileReceiver.filename + "received succesfully!");
+            System.out.println("File: " + fileReceiver.filename + " received successfully!");
         }
     }
 
