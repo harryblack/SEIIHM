@@ -37,6 +37,7 @@ public class FileSenderTest {
     private long timeout;
     private boolean sequenzNumberIsZero;
     private byte[] copyBytesToSend;
+    private boolean wrongAckNumber;
 
 
     // all states for this FSM
@@ -73,6 +74,7 @@ public class FileSenderTest {
         this.packetReceived = new DatagramPacket(bytesReceived, bytesReceived.length);
         this.hiMessage = "Hi! " + sizeOfFile + " " + filename;
         this.sequenzNumberIsZero = true;
+        this.wrongAckNumber = false;
 
         // define all valid state transitions for our state machine
         // (undefined transitions will be ignored)
@@ -231,6 +233,7 @@ public class FileSenderTest {
             final boolean ackHasSeqNumber = (int) bytesReceived[4] == sequenceNumber;
             if (!ackHasSeqNumber) {
                 System.out.println("WRONG ACK-NR - Got: " + bytesReceived[4] + " Length: " + bytesReceived.length);
+                wrongAckNumber = true;
                 return currentState;
             }
 
@@ -315,7 +318,9 @@ public class FileSenderTest {
                 State stateBefore = fileSender.currentState;
                 fileSender.processMsg(Msg.WAIT_FOR_ACK);
                 while (fileSender.currentState != State.FINISH && fileSender.currentState == stateBefore) {
-                    fileSender.processMsg(Msg.RETRANSMIT);
+                    if(!fileSender.wrongAckNumber){
+                        fileSender.processMsg(Msg.RETRANSMIT);
+                    }
                     fileSender.processMsg(Msg.WAIT_FOR_ACK);
                 }
 
