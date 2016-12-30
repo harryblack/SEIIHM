@@ -17,59 +17,71 @@ class SkipPacketsDecorator extends DatagramSocket {
     private long destroyedPackets;
     private long doublePackets;
     private long biterrorPackets;
+    private boolean doDoubleSend;
+    private boolean doBitError;
+    private DatagramPacket packetWithBitError;
 
-    SkipPacketsDecorator(int port, double probabilityLoosePacket, double probabilityDoublePacket, double probabilityBiterrorPacket) throws SocketException {
+    SkipPacketsDecorator(int port,
+                         double probabilityBiterrorPacket,
+                         double probabilityDoublePacket,
+                         double probabilityLoosePacket) throws SocketException {
         super(port);
-        this.probabilityLoosePacket = probabilityLoosePacket;
-        this.probabilityDoublePacket = probabilityDoublePacket;
         this.probabilityBiterrorPacket = probabilityBiterrorPacket;
+        this.probabilityDoublePacket = probabilityDoublePacket;
+        this.probabilityLoosePacket = probabilityLoosePacket;
     }
 
     @Override
     public void send(DatagramPacket p) throws IOException {
         totalPackets++;
-        final double randomNumber = randomGenerator.nextDouble();
+        final double randomNumberBitError = randomGenerator.nextDouble();
+        final double randomNumberDoubleSend = randomGenerator.nextDouble();
+        final double randomNumberDestroy = randomGenerator.nextDouble();
 
-        /*
-        // DESTROY PACKET
-        if (randomNumber >= probabilityLoosePacket) {
-            super.send(p);
-        } else {
-            System.out.println("DESTROY PACKET");
-            destroyedPackets++;
-        }
-        */
-
-        // DOUBLE PACKET
-        if (randomNumber >= probabilityDoublePacket) {
-            super.send(p);
-        } else {
-            System.out.println("SEND PACKET TWICE");
-            super.send(p);
-            super.send(p);
-        }
-
-/*
         // MAKE BITERROR IN PACKET
-        if (randomNumber >= probabilityBiterrorPacket) {
-            super.send(p);
+        if (randomNumberBitError >= probabilityBiterrorPacket) {
+            doBitError = false;
         } else {
             System.out.println("GENERATE BITERROR");
+            biterrorPackets++;
             byte[] data = p.getData().clone();
             int lastByte = data[p.getLength() - 1];
             int newLastByte = lastByte ^ 1;
             System.out.println("lastByte: " + lastByte + " NewLastByte: " + newLastByte);
             data[p.getLength() - 1] = (byte) newLastByte;
             System.out.println(p.getPort());
-            DatagramPacket packetWithBitError = new DatagramPacket(data, data.length, p.getAddress(), p.getPort());
-            super.send(packetWithBitError);
+            packetWithBitError = new DatagramPacket(data, data.length, p.getAddress(), p.getPort());
+            doBitError = true;
         }
-        */
+
+        // DOUBLE PACKET
+        if (randomNumberDoubleSend >= probabilityDoublePacket) {
+            doDoubleSend = false;
+        } else {
+            System.out.println("SEND PACKET TWICE");
+            doublePackets++;
+            doDoubleSend = true;
+        }
+
+        // DESTROY PACKET
+        if (randomNumberDestroy >= probabilityLoosePacket) {
+            int sendTimes = doDoubleSend ? 2 : 1;
+            for (int i = 0; i < sendTimes; i++) {
+                super.send(doBitError ? packetWithBitError : p);
+            }
+        } else {
+            System.out.println("DESTROY PACKET");
+            destroyedPackets++;
+        }
+
     }
 
     @Override
     public void close() {
         System.out.println("Probability destroyed packets: " + ((double) destroyedPackets) / totalPackets);
+        System.out.println("Probability BitError packets: " + ((double) biterrorPackets) / totalPackets);
+        System.out.println("Probability double packets: " + ((double) doublePackets) / totalPackets);
+
         super.close();
     }
 }

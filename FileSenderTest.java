@@ -168,6 +168,9 @@ public class FileSenderTest {
     private class SendSeq extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
+            unexpectedAck = false;
+            System.out.println("INFO Unexpected ACK set to false");
+
             System.out.println("INFO Send sequence number: " + (sequenzNumberIsZero ? 0 : 1));
             packetReceived.setPort(7777);
             int sequenceNumber = sequenzNumberIsZero ? 0 : 1;
@@ -195,18 +198,21 @@ public class FileSenderTest {
         @Override
         public State execute(Msg input) throws UnknownHostException {
             System.out.println("INFO Wait for ACK: " + (sequenzNumberIsZero ? 0 : 1));
-            unexpectedAck = false;
 
+            unexpectedAck = false;
+            System.out.println("Unexpected ACK set to false");
             bytesReceived = new byte[1500];
             int sequenceNumber = sequenzNumberIsZero ? 0 : 1;
 
             timeout = (long) (0.875 * timeout + 0.125 * rtt);
             try {
-                udpSocket.setSoTimeout((int) timeout);        // In the unlike event of a rtt of 0 (localhost) there will be 3 ms added additionally
+                System.out.println("Current timeout value: " + timeout);
+                udpSocket.setSoTimeout(((int) timeout) >= 1 ? (int) timeout : 1);        // In the unlike event of a rtt of 0 (localhost) there will be 3 ms added additionally
+                //udpSocket.setSoTimeout((int) timeout);
                 udpSocket.receive(packetReceived);
                 rttStop = System.currentTimeMillis();
             } catch (SocketTimeoutException ex) {
-                System.out.println("ERROR Receive-SocketTimeoutException - timeout value: "+timeout);
+                System.out.println("ERROR Receive-SocketTimeoutException - timeout value: " + timeout);
                 timeout = timeout * 2;
                 return currentState;
             } catch (IOException e) {
@@ -219,6 +225,7 @@ public class FileSenderTest {
             if (packetReceived.getLength() != 5) {
                 System.out.println("ERROR RESPONSE DOES NOT HAVE 5 BYTES");
                 unexpectedAck = true;
+                System.out.println("INFO Unexpected ACK set to true");
                 return currentState;
             }
 
@@ -231,8 +238,9 @@ public class FileSenderTest {
 
             final boolean ackHasSeqNumber = (int) bytesReceived[4] == sequenceNumber;
             if (!ackHasSeqNumber) {
-                System.out.println("WRONG ACK-NR - Got: " + bytesReceived[4] + " Length: " + bytesReceived.length);
+                System.out.println("ERROR WRONG ACK-NR - Got: " + bytesReceived[4] + " Length: " + bytesReceived.length);
                 unexpectedAck = true;
+                System.out.println("INFO Unexpected ACK set to true");
                 return currentState;
             }
 
@@ -292,7 +300,7 @@ public class FileSenderTest {
         FileInputStream fileInputStream = new FileInputStream(fileName);
 
         // create UDP-Socket
-        try (DatagramSocket udpSocket = new SkipPacketsDecorator(8888,0.0,0.1,0.0)) {
+        try (DatagramSocket udpSocket = new SkipPacketsDecorator(8888, 0.05, 0.05, 0.1)) {
             // create FileSender
             FileSenderTest fileSender = new FileSenderTest(udpSocket, fileInputStream, sizeOfFile, fileName, targetHost);
 
@@ -317,7 +325,7 @@ public class FileSenderTest {
                 State stateBefore = fileSender.currentState;
                 fileSender.processMsg(Msg.WAIT_FOR_ACK);
                 while (fileSender.currentState != State.FINISH && fileSender.currentState == stateBefore) {
-                    if(!fileSender.unexpectedAck){
+                    if (!fileSender.unexpectedAck) {
                         fileSender.processMsg(Msg.RETRANSMIT);
                     }
                     fileSender.processMsg(Msg.WAIT_FOR_ACK);

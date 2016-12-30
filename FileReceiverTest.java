@@ -30,6 +30,7 @@ public class FileReceiverTest {
     private FileOutputStream fileOutputStream;
     private boolean seqNumberIsZero = true;
     private boolean receiveTimeout = false;
+    private boolean noRepeatAck;
 
 
     protected InetAddress ipFromSender;
@@ -158,6 +159,7 @@ public class FileReceiverTest {
     class getSeqZero extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
+            noRepeatAck = false;
             receiveBuffer = new byte[1500];
             receivedPacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
             try {
@@ -169,6 +171,7 @@ public class FileReceiverTest {
             // Check sender ip address
             if (!ipFromSender.equals(receivedPacket.getAddress())) {
                 System.out.println("ERROR - Packet from different host");
+                noRepeatAck = true;
                 return currentState;
             }
 
@@ -177,6 +180,7 @@ public class FileReceiverTest {
             // check for bit error
             if (!crc32Check(receivedBytes)) {
                 System.out.println("ERROR - CRC32 check failed");
+                noRepeatAck = true;
                 return currentState;
             }
 
@@ -184,9 +188,10 @@ public class FileReceiverTest {
                 System.out.println("ERROR - Got wrong Seq-Number: " + 1);
                 return currentState;
             }
-            totalBytesReceived += receivedBytes.length - 5;
+
             fileOutputStream.write(receivedBytes, 5, receivedBytes.length - 5);
             fileOutputStream.flush();
+            totalBytesReceived += receivedBytes.length - 5;
             return State.WAIT_FOR_SEQ_ONE;
         }
     }
@@ -194,6 +199,7 @@ public class FileReceiverTest {
     class getSeqOne extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
+            noRepeatAck = false;
             receiveBuffer = new byte[1500];
             receivedPacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
             try {
@@ -204,6 +210,7 @@ public class FileReceiverTest {
             // Check sender ip address
             if (!ipFromSender.equals(receivedPacket.getAddress())) {
                 System.out.println("ERROR - Packet from different host");
+                noRepeatAck = true;
                 return currentState;
             }
 
@@ -212,6 +219,7 @@ public class FileReceiverTest {
             // check for bit error
             if (!crc32Check(receivedBytes)) {
                 System.out.println("ERROR - CRC32 check failed");
+                noRepeatAck = true;
                 return currentState;
             }
 
@@ -219,9 +227,10 @@ public class FileReceiverTest {
                 System.out.println("ERROR - Got wrong Seq-Number: " + 0);
                 return currentState;
             }
-            totalBytesReceived += receivedBytes.length - 5;
+
             fileOutputStream.write(receivedBytes, 5, receivedBytes.length - 5);
             fileOutputStream.flush();
+            totalBytesReceived += receivedBytes.length - 5;
             return State.WAIT_FOR_SEQ_ZERO;
         }
     }
@@ -263,7 +272,6 @@ public class FileReceiverTest {
         }
     }
 
-
     /*
      * MAIN
      */
@@ -272,7 +280,7 @@ public class FileReceiverTest {
             FileReceiverTest fileReceiver = new FileReceiverTest(udpSocket);
 
             while (true) {
-
+                fileReceiver.totalBytesReceived = 0;
                 while (fileReceiver.currentState == State.WAIT_FOR_HI)
                     fileReceiver.processMsg(Msg.GET_HI);
 
@@ -283,15 +291,22 @@ public class FileReceiverTest {
 
                 while (fileReceiver.currentState != State.FINISH) {
                     while (fileReceiver.currentState == State.WAIT_FOR_SEQ_ONE) {
+                        //if (!fileReceiver.noRepeatAck) {
                         fileReceiver.processMsg(Msg.SEND_ACK_ZERO);
+                        //}
                         fileReceiver.processMsg(Msg.GET_SEQ_ONE);
                     }
 
                     while (fileReceiver.currentState == State.WAIT_FOR_SEQ_ZERO) {
+                        //if (!fileReceiver.noRepeatAck) {
                         fileReceiver.processMsg(Msg.SEND_ACK_ONE);
+                        //}
                         fileReceiver.processMsg(Msg.GET_SEQ_ZERO);
                     }
                 }
+
+                System.out.println("expected size of file: " + fileReceiver.sizeOfFile);
+                System.out.println("actual size of file: " + fileReceiver.totalBytesReceived);
 
                 if (fileReceiver.sizeOfFile == fileReceiver.totalBytesReceived) {
                     System.out.println("File: " + fileReceiver.filename + " received successfully!");
