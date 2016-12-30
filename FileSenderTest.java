@@ -219,8 +219,6 @@ public class FileSenderTest {
                 return currentState;
             }
 
-            System.out.println(Arrays.toString(Arrays.copyOfRange(packetReceived.getData(), 0, packetReceived.getLength())));
-
             if (packetReceived.getLength() != 5) {
                 System.out.println("ERROR RESPONSE DOES NOT HAVE 5 BYTES");
                 unexpectedAck = true;

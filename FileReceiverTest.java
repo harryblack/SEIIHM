@@ -151,7 +151,7 @@ public class FileReceiverTest {
             packetToSent = new DatagramPacket(dataReceived, dataReceived.length, ipFromSender, 8888);
             System.out.println(new String(packetToSent.getData()));
             udpSocket.send(receivedPacket);
-            udpSocket.setSoTimeout(10_000);
+            udpSocket.setSoTimeout(3_000);
             return State.WAIT_FOR_FIRST_PACKET;
         }
     }
@@ -176,7 +176,6 @@ public class FileReceiverTest {
             }
 
             receivedBytes = Arrays.copyOfRange(receiveBuffer, 0, receivedPacket.getLength());
-            System.out.println(Arrays.toString(receivedBytes));
             // check for bit error
             if (!crc32Check(receivedBytes)) {
                 System.out.println("ERROR - CRC32 check failed");
@@ -214,7 +213,6 @@ public class FileReceiverTest {
             }
 
             receivedBytes = Arrays.copyOfRange(receiveBuffer, 0, receivedPacket.getLength());
-            System.out.println(Arrays.toString(receivedBytes));
             // check for bit error
             if (!crc32Check(receivedBytes)) {
                 System.out.println("ERROR - CRC32 check failed");
@@ -240,7 +238,6 @@ public class FileReceiverTest {
             byte[] zeroByteArray = new byte[]{(byte) 0};
 
             byte[] data = ByteBuffer.allocate(5).put(getCRC32InBytes(zeroByteArray)).put((byte) 0).array();
-            System.out.println(Arrays.toString(data));
 
             packetToSent = new DatagramPacket(data, data.length, ipFromSender, 8888);
             udpSocket.send(packetToSent);
@@ -254,7 +251,6 @@ public class FileReceiverTest {
 
             byte[] oneByteArray = new byte[]{(byte) 1};
             byte[] data = ByteBuffer.allocate(5).put(getCRC32InBytes(oneByteArray)).put((byte) 1).array();
-            System.out.println(Arrays.toString(data));
 
             packetToSent = new DatagramPacket(data, data.length, ipFromSender, 8888);
             udpSocket.send(packetToSent);
