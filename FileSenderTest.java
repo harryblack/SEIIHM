@@ -208,7 +208,6 @@ public class FileSenderTest {
             try {
                 System.out.println("Current timeout value: " + timeout);
                 udpSocket.setSoTimeout(((int) timeout) >= 1 ? (int) timeout : 1);        // In the unlike event of a rtt of 0 (localhost) there will be 3 ms added additionally
-                //udpSocket.setSoTimeout((int) timeout);
                 udpSocket.receive(packetReceived);
                 rttStop = System.currentTimeMillis();
             } catch (SocketTimeoutException ex) {

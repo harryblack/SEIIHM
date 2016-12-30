@@ -188,7 +188,6 @@ public class FileReceiverTest {
                 System.out.println("ERROR - Got wrong Seq-Number: " + 1);
                 return currentState;
             }
-
             fileOutputStream.write(receivedBytes, 5, receivedBytes.length - 5);
             fileOutputStream.flush();
             totalBytesReceived += receivedBytes.length - 5;
@@ -291,16 +290,16 @@ public class FileReceiverTest {
 
                 while (fileReceiver.currentState != State.FINISH) {
                     while (fileReceiver.currentState == State.WAIT_FOR_SEQ_ONE) {
-                        //if (!fileReceiver.noRepeatAck) {
+                        if (!fileReceiver.noRepeatAck) {
                         fileReceiver.processMsg(Msg.SEND_ACK_ZERO);
-                        //}
+                        }
                         fileReceiver.processMsg(Msg.GET_SEQ_ONE);
                     }
 
                     while (fileReceiver.currentState == State.WAIT_FOR_SEQ_ZERO) {
-                        //if (!fileReceiver.noRepeatAck) {
+                        if (!fileReceiver.noRepeatAck) {
                         fileReceiver.processMsg(Msg.SEND_ACK_ONE);
-                        //}
+                        }
                         fileReceiver.processMsg(Msg.GET_SEQ_ZERO);
                     }
                 }
