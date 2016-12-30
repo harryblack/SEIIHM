@@ -21,7 +21,7 @@ public class FileReceiverTest {
     private byte[] receiveBuffer = new byte[1500];
     private byte[] receivedBytes;
     private byte[] dataReceived;
-    private byte[] dataToSent;
+    private int totalBytesReceived;
     private DatagramPacket receivedPacket;
     private DatagramPacket packetToSent;
     private Checksum checksum = new CRC32();
@@ -70,6 +70,7 @@ public class FileReceiverTest {
         transition[State.WAIT_FOR_SEQ_ONE.ordinal()][Msg.GET_SEQ_ONE.ordinal()] = new getSeqOne();
         transition[State.WAIT_FOR_SEQ_ZERO.ordinal()][Msg.SEND_ACK_ONE.ordinal()] = new sendAckOne();
         transition[State.WAIT_FOR_SEQ_ZERO.ordinal()][Msg.GET_SEQ_ZERO.ordinal()] = new getSeqZero();
+        transition[State.FINISH.ordinal()][Msg.GET_HI.ordinal()] = new restartReceiver();
 
         System.out.println("INFO FSM constructed, current state: " + currentState);
     }
@@ -131,8 +132,6 @@ public class FileReceiverTest {
                 return State.WAIT_FOR_HI;
             }
 
-            ipFromSender = receivedPacket.getAddress();
-
             System.out.println("filesize: " + sizeOfFile + " filename: " + filename);
 
             // create file
@@ -151,7 +150,7 @@ public class FileReceiverTest {
             packetToSent = new DatagramPacket(dataReceived, dataReceived.length, ipFromSender, 8888);
             System.out.println(new String(packetToSent.getData()));
             udpSocket.send(receivedPacket);
-            udpSocket.setSoTimeout(30_000);
+            udpSocket.setSoTimeout(10_000);
             return State.WAIT_FOR_FIRST_PACKET;
         }
     }
@@ -185,7 +184,7 @@ public class FileReceiverTest {
                 System.out.println("ERROR - Got wrong Seq-Number: " + 1);
                 return currentState;
             }
-
+            totalBytesReceived += receivedBytes.length - 5;
             fileOutputStream.write(receivedBytes, 5, receivedBytes.length - 5);
             fileOutputStream.flush();
             return State.WAIT_FOR_SEQ_ONE;
@@ -220,7 +219,7 @@ public class FileReceiverTest {
                 System.out.println("ERROR - Got wrong Seq-Number: " + 0);
                 return currentState;
             }
-
+            totalBytesReceived += receivedBytes.length - 5;
             fileOutputStream.write(receivedBytes, 5, receivedBytes.length - 5);
             fileOutputStream.flush();
             return State.WAIT_FOR_SEQ_ZERO;
@@ -230,9 +229,9 @@ public class FileReceiverTest {
     class sendAckZero extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
-            byte[] zeroByteArray = new byte[]{(byte)0};
+            byte[] zeroByteArray = new byte[]{(byte) 0};
 
-            byte[] data = ByteBuffer.allocate(5).put(getCRC32InBytes(zeroByteArray)).put((byte)0).array();
+            byte[] data = ByteBuffer.allocate(5).put(getCRC32InBytes(zeroByteArray)).put((byte) 0).array();
             System.out.println(Arrays.toString(data));
 
             packetToSent = new DatagramPacket(data, data.length, ipFromSender, 8888);
@@ -245,13 +244,22 @@ public class FileReceiverTest {
         @Override
         public State execute(Msg input) throws IOException {
 
-            byte[] oneByteArray = new byte[]{(byte)1};
-            byte[] data = ByteBuffer.allocate(5).put(getCRC32InBytes(oneByteArray)).put((byte)1).array();
+            byte[] oneByteArray = new byte[]{(byte) 1};
+            byte[] data = ByteBuffer.allocate(5).put(getCRC32InBytes(oneByteArray)).put((byte) 1).array();
             System.out.println(Arrays.toString(data));
 
             packetToSent = new DatagramPacket(data, data.length, ipFromSender, 8888);
             udpSocket.send(packetToSent);
             return State.WAIT_FOR_SEQ_ZERO;
+        }
+    }
+
+    class restartReceiver extends Transition {
+        @Override
+        public State execute(Msg input) throws IOException {
+            System.out.println("INFO Restarting receiver...");
+            udpSocket.setSoTimeout(0);
+            return State.WAIT_FOR_HI;
         }
     }
 
@@ -263,26 +271,35 @@ public class FileReceiverTest {
         try (DatagramSocket udpSocket = new DatagramSocket(7777)) {
             FileReceiverTest fileReceiver = new FileReceiverTest(udpSocket);
 
-            while (fileReceiver.currentState == State.WAIT_FOR_HI)
-                fileReceiver.processMsg(Msg.GET_HI);
+            while (true) {
 
-            while (fileReceiver.currentState == State.WAIT_FOR_FIRST_PACKET) {
-                fileReceiver.processMsg(Msg.SEND_RESPONSE_HI);
-                fileReceiver.processMsg(Msg.GET_SEQ_ZERO);
-            }
+                while (fileReceiver.currentState == State.WAIT_FOR_HI)
+                    fileReceiver.processMsg(Msg.GET_HI);
 
-            while (fileReceiver.currentState != State.FINISH) {
-                while (fileReceiver.currentState == State.WAIT_FOR_SEQ_ONE) {
-                    fileReceiver.processMsg(Msg.SEND_ACK_ZERO);
-                    fileReceiver.processMsg(Msg.GET_SEQ_ONE);
-                }
-
-                while (fileReceiver.currentState == State.WAIT_FOR_SEQ_ZERO) {
-                    fileReceiver.processMsg(Msg.SEND_ACK_ONE);
+                while (fileReceiver.currentState == State.WAIT_FOR_FIRST_PACKET) {
+                    fileReceiver.processMsg(Msg.SEND_RESPONSE_HI);
                     fileReceiver.processMsg(Msg.GET_SEQ_ZERO);
                 }
+
+                while (fileReceiver.currentState != State.FINISH) {
+                    while (fileReceiver.currentState == State.WAIT_FOR_SEQ_ONE) {
+                        fileReceiver.processMsg(Msg.SEND_ACK_ZERO);
+                        fileReceiver.processMsg(Msg.GET_SEQ_ONE);
+                    }
+
+                    while (fileReceiver.currentState == State.WAIT_FOR_SEQ_ZERO) {
+                        fileReceiver.processMsg(Msg.SEND_ACK_ONE);
+                        fileReceiver.processMsg(Msg.GET_SEQ_ZERO);
+                    }
+                }
+
+                if (fileReceiver.sizeOfFile == fileReceiver.totalBytesReceived) {
+                    System.out.println("File: " + fileReceiver.filename + " received successfully!");
+                } else {
+                    System.out.println("Receiver timed out prematurely. " + "File " + fileReceiver.filename + " was not received correctly.");
+                }
+                fileReceiver.processMsg(Msg.GET_HI);
             }
-            System.out.println("File: " + fileReceiver.filename + " received successfully!");
         }
     }
 

@@ -195,7 +195,7 @@ public class FileSenderTest {
         @Override
         public State execute(Msg input) throws UnknownHostException {
             System.out.println("INFO Wait for ACK: " + (sequenzNumberIsZero ? 0 : 1));
-
+            unexpectedAck = false;
 
             bytesReceived = new byte[1500];
             int sequenceNumber = sequenzNumberIsZero ? 0 : 1;
@@ -322,9 +322,7 @@ public class FileSenderTest {
                     }
                     fileSender.processMsg(Msg.WAIT_FOR_ACK);
                 }
-
             }
-
         }
         System.out.println("FileSender ended - Goodbye!");
     }

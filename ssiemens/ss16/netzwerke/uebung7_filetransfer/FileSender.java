@@ -1,8 +1,5 @@
 package ssiemens.ss16.netzwerke.uebung7_filetransfer;
 
-import com.sun.tools.doclets.formats.html.SourceToHTMLConverter;
-import com.sun.tools.javac.code.Attribute;
-
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.*;
