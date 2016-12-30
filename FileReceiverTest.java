@@ -140,7 +140,7 @@ public class FileReceiverTest {
             if (file.exists()) {
                 file.delete();
             }
-            fileOutputStream = new FileOutputStream(file);
+            //fileOutputStream = new FileOutputStream(file);
             return State.WAIT_FOR_FIRST_PACKET;
         }
     }
@@ -279,24 +279,29 @@ public class FileReceiverTest {
                 while (fileReceiver.currentState == State.WAIT_FOR_HI)
                     fileReceiver.processMsg(Msg.GET_HI);
 
-                while (fileReceiver.currentState == State.WAIT_FOR_FIRST_PACKET) {
-                    fileReceiver.processMsg(Msg.SEND_RESPONSE_HI);
-                    fileReceiver.processMsg(Msg.GET_SEQ_ZERO);
-                }
+                try (FileOutputStream fileOutputStream = new FileOutputStream(new File("new_"+fileReceiver.filename))){
+                    fileReceiver.fileOutputStream = fileOutputStream;
 
-                while (fileReceiver.currentState != State.FINISH) {
-                    while (fileReceiver.currentState == State.WAIT_FOR_SEQ_ONE) {
-                        if (!fileReceiver.noRepeatAck) {
-                        fileReceiver.processMsg(Msg.SEND_ACK_ZERO);
-                        }
-                        fileReceiver.processMsg(Msg.GET_SEQ_ONE);
+
+                    while (fileReceiver.currentState == State.WAIT_FOR_FIRST_PACKET) {
+                        fileReceiver.processMsg(Msg.SEND_RESPONSE_HI);
+                        fileReceiver.processMsg(Msg.GET_SEQ_ZERO);
                     }
 
-                    while (fileReceiver.currentState == State.WAIT_FOR_SEQ_ZERO) {
-                        if (!fileReceiver.noRepeatAck) {
-                        fileReceiver.processMsg(Msg.SEND_ACK_ONE);
+                    while (fileReceiver.currentState != State.FINISH) {
+                        while (fileReceiver.currentState == State.WAIT_FOR_SEQ_ONE) {
+                            if (!fileReceiver.noRepeatAck) {
+                                fileReceiver.processMsg(Msg.SEND_ACK_ZERO);
+                            }
+                            fileReceiver.processMsg(Msg.GET_SEQ_ONE);
                         }
-                        fileReceiver.processMsg(Msg.GET_SEQ_ZERO);
+
+                        while (fileReceiver.currentState == State.WAIT_FOR_SEQ_ZERO) {
+                            if (!fileReceiver.noRepeatAck) {
+                                fileReceiver.processMsg(Msg.SEND_ACK_ONE);
+                            }
+                            fileReceiver.processMsg(Msg.GET_SEQ_ZERO);
+                        }
                     }
                 }
 

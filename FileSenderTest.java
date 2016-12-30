@@ -158,7 +158,7 @@ public class FileSenderTest {
             if (!responseIsValid) return State.WAIT_FOR_HI;
             bytesToSend = new byte[1405];
             rtt = rttStop - rttStart;
-            timeout = rtt * 2 + 100;
+            timeout = rtt * 2 + 500;
             udpSocket.setSoTimeout((int) timeout);
 
             return State.WAIT_FOR_SEND_SEQ_ZERO;
@@ -207,7 +207,8 @@ public class FileSenderTest {
             timeout = (long) (0.875 * timeout + 0.125 * rtt);
             try {
                 System.out.println("Current timeout value: " + timeout);
-                udpSocket.setSoTimeout(((int) timeout) >= 1 ? (int) timeout : 1);        // In the unlike event of a rtt of 0 (localhost) there will be 3 ms added additionally
+                udpSocket.setSoTimeout(500);
+                //udpSocket.setSoTimeout(((int) timeout) >= 1 ? (int) timeout : 1);        // In the unlike event of a rtt of 0 (localhost) there will be 3 ms added additionally
                 udpSocket.receive(packetReceived);
                 rttStop = System.currentTimeMillis();
             } catch (SocketTimeoutException ex) {
