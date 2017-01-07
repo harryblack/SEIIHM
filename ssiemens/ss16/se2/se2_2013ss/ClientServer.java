@@ -51,11 +51,8 @@ public class ClientServer {
                     System.out.println("Connected with " + client.getInetAddress() + " on port " + client.getPort() + " on local port " + client.getLocalPort());
 
                     try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(client.getOutputStream()))) {
-
                         System.out.println("write");
                         writer.write(message);
-                        writer.flush();
-
                     }
                 }
 
