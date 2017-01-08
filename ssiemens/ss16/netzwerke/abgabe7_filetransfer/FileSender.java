@@ -263,8 +263,7 @@ public class FileSender {
 
         // create UDP-Socket
         //try (DatagramSocket udpSocket = new UDPSocketManipulator(8888, 0.05, 0.05, 0.1))
-        try (DatagramSocket udpSocket = new DatagramSocket(8888))
-        {
+        try (DatagramSocket udpSocket = new DatagramSocket(8888)) {
             // create FileSender
             FileSender fileSender = new FileSender(udpSocket, fileInputStream, sizeOfFile, fileName, targetHost);
 
@@ -277,11 +276,11 @@ public class FileSender {
                 fileSender.processMsg(Msg.SEND_HI);
                 fileSender.processMsg(Msg.WAIT_FOR_HI);
             }
-
             if (fileSender.currentState == State.SERVER_UNREACHABLE) {
                 System.out.println("ERROR SERVER UNREACHABLE!");
                 return;
             }
+            long startTime = System.currentTimeMillis();
 
             // START FILE TRANSFER
             while (fileSender.currentState != State.FINISH) {
@@ -295,6 +294,9 @@ public class FileSender {
                     fileSender.processMsg(Msg.WAIT_FOR_ACK);
                 }
             }
+            long duration = System.currentTimeMillis() - startTime;
+            System.out.println("Duration: " + duration);
+            System.out.println("Datarate: " + (sizeOfFile / (duration / 1000.0)) / 1000 + " KB/sec");
         }
         System.out.println("FileSender ended - Goodbye!");
     }

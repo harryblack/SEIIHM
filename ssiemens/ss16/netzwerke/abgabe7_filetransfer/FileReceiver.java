@@ -272,10 +272,9 @@ public class FileReceiver {
                 fileReceiver.totalBytesReceived = 0;
                 while (fileReceiver.currentState == State.WAIT_FOR_HI)
                     fileReceiver.processMsg(Msg.GET_HI);
-
+                long startTimeFileTransfer = System.currentTimeMillis();
                 try (FileOutputStream fileOutputStream = new FileOutputStream(new File("copyOf_"+fileReceiver.filename))) {
                     fileReceiver.fileOutputStream = fileOutputStream;
-
 
                     while (fileReceiver.currentState == State.WAIT_FOR_FIRST_PACKET) {
                         fileReceiver.processMsg(Msg.SEND_RESPONSE_HI);
@@ -298,9 +297,12 @@ public class FileReceiver {
                         }
                     }
                 }
-
+                long duration = System.currentTimeMillis()-startTimeFileTransfer-1500;
+                System.out.println("Duration: " + duration);
+                System.out.println("Datarate: "+(fileReceiver.totalBytesReceived/(duration/1000.0)/1000)+" KB/sec");
                 System.out.println("expected size of file: " + fileReceiver.sizeOfFile);
                 System.out.println("actual size of file: " + fileReceiver.totalBytesReceived);
+
 
                 if (fileReceiver.sizeOfFile == fileReceiver.totalBytesReceived) {
                     System.out.println("File: " + fileReceiver.filename + " received successfully!");
