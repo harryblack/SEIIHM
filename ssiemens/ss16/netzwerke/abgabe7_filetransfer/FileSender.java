@@ -1,3 +1,5 @@
+package ssiemens.ss16.netzwerke.abgabe7_filetransfer;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.*;
@@ -9,17 +11,12 @@ import java.util.Arrays;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
-/**
- * Class which models the state machine itself.
- */
-public class FileSenderTest {
+public class FileSender {
     // Final object variables
     private final DatagramSocket udpSocket;
     private final String targetHost;
     private final int targetPort = 7777;
-    private final int sizeOfFile;
     private final FileInputStream fileInputStream;
-    private final String filename;
     private final Checksum checksum;
     private final String hiMessage;
 
@@ -29,12 +26,7 @@ public class FileSenderTest {
     private DatagramPacket packetToSend;
     private DatagramPacket packetReceived;
     private int sendHiRetryCounter;
-    private long rttStart;
-    private long rttStop;
-    private long rtt;
-    private long timeout;
-    private boolean sequenzNumberIsZero;
-    private byte[] copyBytesToSend;
+    private boolean sequenceNumberIsZero;
     private boolean unexpectedAck;
 
 
@@ -61,17 +53,15 @@ public class FileSenderTest {
     /**
      * constructor
      */
-    public FileSenderTest(DatagramSocket udpSocket, FileInputStream fileInputStream, int sizeOfFile, String filename, String targetHost) throws SocketException {
+    private FileSender(DatagramSocket udpSocket, FileInputStream fileInputStream, int sizeOfFile, String filename, String targetHost) throws SocketException {
         this.udpSocket = udpSocket;
         this.fileInputStream = fileInputStream;
-        this.sizeOfFile = sizeOfFile;
-        this.filename = filename;
         this.checksum = new CRC32();
         this.targetHost = targetHost;
         this.bytesReceived = new byte[1500];
         this.packetReceived = new DatagramPacket(bytesReceived, bytesReceived.length);
         this.hiMessage = "Hi! " + sizeOfFile + " " + filename;
-        this.sequenzNumberIsZero = true;
+        this.sequenceNumberIsZero = true;
         this.unexpectedAck = false;
 
         // define all valid state transitions for our state machine
@@ -89,7 +79,6 @@ public class FileSenderTest {
         transition[State.WAIT_FOR_SEND_SEQ_ONE.ordinal()][Msg.SEND_SEQ.ordinal()] = new SendSeq();
         transition[State.WAIT_FOR_ACK_ONE.ordinal()][Msg.WAIT_FOR_ACK.ordinal()] = new WaitForAck();
         transition[State.WAIT_FOR_ACK_ONE.ordinal()][Msg.RETRANSMIT.ordinal()] = new Retransmit();
-        transition[State.FINISH.ordinal()][Msg.WAIT_FOR_ACK.ordinal()] = new DoNothing();
         System.out.println("INFO FSM constructed, current state: " + currentState);
     }
 
@@ -98,7 +87,7 @@ public class FileSenderTest {
      *
      * @param input Message or condition that has occurred.
      */
-    public void processMsg(Msg input) throws IOException {
+    private void processMsg(Msg input) throws IOException {
         System.out.println("INFO Received " + input + " in state " + currentState);
         Transition trans = transition[currentState.ordinal()][input.ordinal()];
         if (trans != null) {
@@ -124,7 +113,6 @@ public class FileSenderTest {
             final byte[] calculatedCRC = getCRC32InBytes(message);
             bytesToSend = ByteBuffer.allocate(calculatedCRC.length + message.length).put(calculatedCRC).put(message).array();
             packetToSend = new DatagramPacket(bytesToSend, bytesToSend.length, InetAddress.getByName(targetHost), targetPort);
-            rttStart = System.currentTimeMillis();
             udpSocket.send(packetToSend);
             return State.WAIT_FOR_HI;
         }
@@ -140,7 +128,6 @@ public class FileSenderTest {
             try {
                 //udpSocket.receive(packetReceived);
                 udpSocket.receive(test);
-                rttStop = System.currentTimeMillis();
             } catch (SocketTimeoutException ex) {
                 System.out.println("TIMEOUT-HI");
                 sendHiRetryCounter++;
@@ -157,9 +144,7 @@ public class FileSenderTest {
             final boolean responseIsValid = Arrays.equals(hiMessage.getBytes(), Arrays.copyOfRange(bytesReceived, 4, bytesReceived.length));
             if (!responseIsValid) return State.WAIT_FOR_HI;
             bytesToSend = new byte[1405];
-            rtt = rttStop - rttStart;
-            timeout = rtt * 2 + 500;
-            udpSocket.setSoTimeout((int) timeout);
+            udpSocket.setSoTimeout(3_000);
 
             return State.WAIT_FOR_SEND_SEQ_ZERO;
         }
@@ -169,11 +154,9 @@ public class FileSenderTest {
         @Override
         public State execute(Msg input) throws IOException {
             unexpectedAck = false;
-            System.out.println("INFO Unexpected ACK set to false");
-
-            System.out.println("INFO Send sequence number: " + (sequenzNumberIsZero ? 0 : 1));
+            System.out.println("INFO Send sequence number: " + (sequenceNumberIsZero ? 0 : 1));
             packetReceived.setPort(7777);
-            int sequenceNumber = sequenzNumberIsZero ? 0 : 1;
+            int sequenceNumber = sequenceNumberIsZero ? 0 : 1;
 
             bytesToSend = new byte[1400];
             int numberOfBytesRead = fileInputStream.read(bytesToSend);
@@ -185,35 +168,27 @@ public class FileSenderTest {
             byte[] crc32 = getCRC32InBytes(dataToSend);
 
             bytesToSend = ByteBuffer.allocate(crc32.length + dataToSend.length).put(crc32).put(dataToSend).array();
-            copyBytesToSend = Arrays.copyOf(bytesToSend, bytesToSend.length);
 
             packetToSend = new DatagramPacket(bytesToSend, bytesToSend.length, InetAddress.getByName(targetHost), targetPort);
-            rttStart = System.currentTimeMillis();
             udpSocket.send(packetToSend);
-            return sequenzNumberIsZero ? State.WAIT_FOR_ACK_ZERO : State.WAIT_FOR_ACK_ONE;
+            return sequenceNumberIsZero ? State.WAIT_FOR_ACK_ZERO : State.WAIT_FOR_ACK_ONE;
         }
     }
 
     private class WaitForAck extends Transition {
         @Override
         public State execute(Msg input) throws UnknownHostException {
-            System.out.println("INFO Wait for ACK: " + (sequenzNumberIsZero ? 0 : 1));
+            System.out.println("INFO Wait for ACK: " + (sequenceNumberIsZero ? 0 : 1));
 
             unexpectedAck = false;
-            System.out.println("Unexpected ACK set to false");
             bytesReceived = new byte[1500];
-            int sequenceNumber = sequenzNumberIsZero ? 0 : 1;
+            int sequenceNumber = sequenceNumberIsZero ? 0 : 1;
 
-            timeout = (long) (0.875 * timeout + 0.125 * rtt);
             try {
-                System.out.println("Current timeout value: " + timeout);
                 udpSocket.setSoTimeout(500);
-                //udpSocket.setSoTimeout(((int) timeout) >= 1 ? (int) timeout : 1);        // In the unlike event of a rtt of 0 (localhost) there will be 3 ms added additionally
                 udpSocket.receive(packetReceived);
-                rttStop = System.currentTimeMillis();
             } catch (SocketTimeoutException ex) {
-                System.out.println("ERROR Receive-SocketTimeoutException - timeout value: " + timeout);
-                timeout = timeout * 2;
+                System.out.println("ERROR Receive-SocketTimeoutException");
                 return currentState;
             } catch (IOException e) {
                 System.out.println("ERROR IOException");
@@ -242,31 +217,20 @@ public class FileSenderTest {
                 return currentState;
             }
 
-            rtt = rttStop - rttStart;
-            sequenzNumberIsZero = !sequenzNumberIsZero;
-            return sequenzNumberIsZero ? State.WAIT_FOR_SEND_SEQ_ZERO : State.WAIT_FOR_SEND_SEQ_ONE;
+            sequenceNumberIsZero = !sequenceNumberIsZero;
+            return sequenceNumberIsZero ? State.WAIT_FOR_SEND_SEQ_ZERO : State.WAIT_FOR_SEND_SEQ_ONE;
         }
     }
 
     private class Retransmit extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
-            System.out.println("Retransmit Seq: " + (sequenzNumberIsZero ? 0 : 1));
-            rttStart = System.currentTimeMillis();
+            System.out.println("Retransmit Seq: " + (sequenceNumberIsZero ? 0 : 1));
             udpSocket.send(packetToSend);
-            return sequenzNumberIsZero ? State.WAIT_FOR_ACK_ZERO : State.WAIT_FOR_ACK_ONE;
+            udpSocket.setSoTimeout(1_000);
+            return sequenceNumberIsZero ? State.WAIT_FOR_ACK_ZERO : State.WAIT_FOR_ACK_ONE;
         }
     }
-
-
-    private class DoNothing extends Transition {
-        @Override
-        public State execute(Msg input) throws IOException {
-            System.out.println("DoNothing");
-            return State.FINISH;
-        }
-    }
-
 
     /**
      * Main programm for the file sender
@@ -298,10 +262,11 @@ public class FileSenderTest {
         FileInputStream fileInputStream = new FileInputStream(fileName);
 
         // create UDP-Socket
-        try (DatagramSocket udpSocket = new SkipPacketsDecorator(8888, 0.05, 0.05, 0.1
-        )) {
+        //try (DatagramSocket udpSocket = new UDPSocketManipulator(8888, 0.05, 0.05, 0.1))
+        try (DatagramSocket udpSocket = new DatagramSocket(8888))
+        {
             // create FileSender
-            FileSenderTest fileSender = new FileSenderTest(udpSocket, fileInputStream, sizeOfFile, fileName, targetHost);
+            FileSender fileSender = new FileSender(udpSocket, fileInputStream, sizeOfFile, fileName, targetHost);
 
 
             // START COMMUNICATION WITH TARGET HOST

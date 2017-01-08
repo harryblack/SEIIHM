@@ -1,3 +1,5 @@
+package ssiemens.ss16.netzwerke;
+
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;

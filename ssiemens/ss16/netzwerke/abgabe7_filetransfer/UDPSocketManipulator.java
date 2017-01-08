@@ -1,14 +1,12 @@
+package ssiemens.ss16.netzwerke.abgabe7_filetransfer;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
-import java.util.Arrays;
 import java.util.Random;
 
-/**
- * Created by Sascha on 23/12/2016.
- */
-class SkipPacketsDecorator extends DatagramSocket {
+class UDPSocketManipulator extends DatagramSocket {
     private final double probabilityLoosePacket;
     private final double probabilityDoublePacket;
     private final double probabilityBiterrorPacket;
@@ -16,12 +14,10 @@ class SkipPacketsDecorator extends DatagramSocket {
     private long totalPackets;
     private long destroyedPackets;
     private long doublePackets;
-    private long biterrorPackets;
-    private boolean doDoubleSend;
-    private boolean doBitError;
+    private long bitErrorPackets;
     private DatagramPacket packetWithBitError;
 
-    SkipPacketsDecorator(int port,
+    UDPSocketManipulator(int port,
                          double probabilityBiterrorPacket,
                          double probabilityDoublePacket,
                          double probabilityLoosePacket) throws SocketException {
@@ -33,6 +29,9 @@ class SkipPacketsDecorator extends DatagramSocket {
 
     @Override
     public void send(DatagramPacket p) throws IOException {
+        boolean doDoubleSend;
+        boolean doBitError;
+
         totalPackets++;
         final double randomNumberBitError = randomGenerator.nextDouble();
         final double randomNumberDoubleSend = randomGenerator.nextDouble();
@@ -43,7 +42,7 @@ class SkipPacketsDecorator extends DatagramSocket {
             doBitError = false;
         } else {
             System.out.println("GENERATE BITERROR");
-            biterrorPackets++;
+            bitErrorPackets++;
             byte[] data = p.getData().clone();
             int lastByte = data[p.getLength() - 1];
             int newLastByte = lastByte ^ 1;
@@ -79,7 +78,7 @@ class SkipPacketsDecorator extends DatagramSocket {
     @Override
     public void close() {
         System.out.println("Probability destroyed packets: " + ((double) destroyedPackets) / totalPackets);
-        System.out.println("Probability BitError packets: " + ((double) biterrorPackets) / totalPackets);
+        System.out.println("Probability BitError packets: " + ((double) bitErrorPackets) / totalPackets);
         System.out.println("Probability double packets: " + ((double) doublePackets) / totalPackets);
 
         super.close();

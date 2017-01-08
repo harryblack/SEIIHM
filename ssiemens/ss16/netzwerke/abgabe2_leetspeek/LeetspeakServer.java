@@ -1,4 +1,4 @@
-package ssiemens.ss16.netzwerke.uebung2_leetspeek;
+package ssiemens.ss16.netzwerke.abgabe2_leetspeek;
 
 
 import java.io.*;

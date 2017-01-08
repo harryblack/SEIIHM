@@ -1,3 +1,5 @@
+package ssiemens.ss16.netzwerke.abgabe7_filetransfer;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -7,15 +9,7 @@ import java.util.Arrays;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
-/**
- * Created by Sascha on 20/12/2016.
- */
-public class FileReceiverTest {
-    //****************************************************
-    // File format used: "<CRC32> <Hi!> <size> <filename>"
-    //                    <4Byte> <xBy> <xBy>   <xBytes>
-
-
+public class FileReceiver {
     private final DatagramSocket udpSocket;
 
     private byte[] receiveBuffer = new byte[1500];
@@ -28,12 +22,10 @@ public class FileReceiverTest {
     private String filename;
     private int sizeOfFile;
     private FileOutputStream fileOutputStream;
-    private boolean seqNumberIsZero = true;
-    private boolean receiveTimeout = false;
     private boolean noRepeatAck;
 
 
-    protected InetAddress ipFromSender;
+    private InetAddress ipFromSender;
 
 
     // current state of the FSM
@@ -43,19 +35,19 @@ public class FileReceiverTest {
     private Transition[][] transition;
 
     // all states for this FSM
-    enum State {
+    private enum State {
         WAIT_FOR_HI, WAIT_FOR_FIRST_PACKET, WAIT_FOR_SEQ_ZERO, WAIT_FOR_SEQ_ONE, FINISH
     }
 
     // all messages/conditions which can occur
-    enum Msg {
+    private enum Msg {
         GET_HI, SEND_RESPONSE_HI, GET_SEQ_ZERO, GET_SEQ_ONE, SEND_ACK_ZERO, SEND_ACK_ONE
     }
 
     /**
      * constructor
      */
-    public FileReceiverTest(DatagramSocket udpSocket) throws SocketException {
+    private FileReceiver(DatagramSocket udpSocket) throws SocketException {
         this.udpSocket = udpSocket;
 
         // Set current state
@@ -81,7 +73,7 @@ public class FileReceiverTest {
      *
      * @param input Message or condition that has occurred.
      */
-    public void
+    private void
     processMsg(Msg input) throws IOException {
         System.out.println("INFO Received " + input + " in state " + currentState);
         Transition trans = transition[currentState.ordinal()][input.ordinal()];
@@ -100,7 +92,7 @@ public class FileReceiverTest {
         abstract public State execute(Msg input) throws IOException;
     }
 
-    class waitForHi extends Transition {
+    private class waitForHi extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
             receivedPacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
@@ -136,27 +128,29 @@ public class FileReceiverTest {
             System.out.println("filesize: " + sizeOfFile + " filename: " + filename);
 
             // create file
-            File file = new File("new_" + filename);
+            File file = new File("copyOf_" + filename);
             if (file.exists()) {
-                file.delete();
+                boolean fileDeleted = file.delete();
+                if (!fileDeleted) {
+                    throw new IOException("File could not be deleted! Please check permissions!");
+                }
             }
-            //fileOutputStream = new FileOutputStream(file);
             return State.WAIT_FOR_FIRST_PACKET;
         }
     }
 
-    class respondWithHi extends Transition {
+    private class respondWithHi extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
             packetToSent = new DatagramPacket(dataReceived, dataReceived.length, ipFromSender, 8888);
             System.out.println(new String(packetToSent.getData()));
             udpSocket.send(receivedPacket);
-            udpSocket.setSoTimeout(3_000);
+            udpSocket.setSoTimeout(1500);
             return State.WAIT_FOR_FIRST_PACKET;
         }
     }
 
-    class getSeqZero extends Transition {
+    private class getSeqZero extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
             noRepeatAck = false;
@@ -194,7 +188,7 @@ public class FileReceiverTest {
         }
     }
 
-    class getSeqOne extends Transition {
+    private class getSeqOne extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
             noRepeatAck = false;
@@ -232,7 +226,7 @@ public class FileReceiverTest {
         }
     }
 
-    class sendAckZero extends Transition {
+    private class sendAckZero extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
             byte[] zeroByteArray = new byte[]{(byte) 0};
@@ -245,7 +239,7 @@ public class FileReceiverTest {
         }
     }
 
-    class sendAckOne extends Transition {
+    private class sendAckOne extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
 
@@ -258,7 +252,7 @@ public class FileReceiverTest {
         }
     }
 
-    class restartReceiver extends Transition {
+    private class restartReceiver extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
             System.out.println("INFO Restarting receiver...");
@@ -272,14 +266,14 @@ public class FileReceiverTest {
      */
     public static void main(String[] ignored) throws IOException {
         try (DatagramSocket udpSocket = new DatagramSocket(7777)) {
-            FileReceiverTest fileReceiver = new FileReceiverTest(udpSocket);
+            FileReceiver fileReceiver = new FileReceiver(udpSocket);
 
             while (true) {
                 fileReceiver.totalBytesReceived = 0;
                 while (fileReceiver.currentState == State.WAIT_FOR_HI)
                     fileReceiver.processMsg(Msg.GET_HI);
 
-                try (FileOutputStream fileOutputStream = new FileOutputStream(new File("new_"+fileReceiver.filename))){
+                try (FileOutputStream fileOutputStream = new FileOutputStream(new File("copyOf_"+fileReceiver.filename))) {
                     fileReceiver.fileOutputStream = fileOutputStream;
 
 
