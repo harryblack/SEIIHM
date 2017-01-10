@@ -88,12 +88,12 @@ public class FileSender {
      * @param input Message or condition that has occurred.
      */
     private void processMsg(Msg input) throws IOException {
-        System.out.println("INFO Received " + input + " in state " + currentState);
+        assert Tracer.printConsoleLog("INFO Received " + input + " in state " + currentState);
         Transition trans = transition[currentState.ordinal()][input.ordinal()];
         if (trans != null) {
             currentState = trans.execute(input);
         }
-        System.out.println("INFO State: " + currentState);
+        assert Tracer.printConsoleLog("INFO State: " + currentState);
     }
 
     /**
