@@ -28,6 +28,7 @@ public class FileSender {
     private int sendHiRetryCounter;
     private boolean sequenceNumberIsZero;
     private boolean unexpectedAck;
+    private long timeout;
 
 
     // all states for this FSM
@@ -185,7 +186,7 @@ public class FileSender {
             int sequenceNumber = sequenceNumberIsZero ? 0 : 1;
 
             try {
-                udpSocket.setSoTimeout(500);
+                udpSocket.setSoTimeout((int) timeout);
                 udpSocket.receive(packetReceived);
             } catch (SocketTimeoutException ex) {
                 assert Tracer.printConsoleLog("ERROR Receive-SocketTimeoutException");
@@ -227,7 +228,6 @@ public class FileSender {
         public State execute(Msg input) throws IOException {
             assert Tracer.printConsoleLog("Retransmit Seq: " + (sequenceNumberIsZero ? 0 : 1));
             udpSocket.send(packetToSend);
-            udpSocket.setSoTimeout(1_000);
             return sequenceNumberIsZero ? State.WAIT_FOR_ACK_ZERO : State.WAIT_FOR_ACK_ONE;
         }
     }
@@ -235,7 +235,7 @@ public class FileSender {
     /**
      * Main programm for the file sender
      *
-     * @param args Expects two parameters. First one is the filname to copy. Second one is the target host where to copy the file.
+     * @param args Expects two parameters. First one is the filename to copy. Second one is the target host where to copy the file.
      */
     public static void main(String[] args) throws IOException {
         // check argument length
@@ -262,18 +262,22 @@ public class FileSender {
         FileInputStream fileInputStream = new FileInputStream(fileName);
 
         // create UDP-Socket
-        try (DatagramSocket udpSocket = new UDPSocketManipulator(8888, 0.05, 0.05, 0.1)) {
+        try (DatagramSocket udpSocket = new UDPSocketManipulator(8888, 0.0, 0.0, 0.0)) { // ;
             // create FileSender
             FileSender fileSender = new FileSender(udpSocket, fileInputStream, sizeOfFile, fileName, targetHost);
 
 
             // START COMMUNICATION WITH TARGET HOST
+            long startTimeForTimeout = System.currentTimeMillis();
             fileSender.processMsg(Msg.SEND_HI);
             fileSender.processMsg(Msg.WAIT_FOR_HI);
+            fileSender.timeout = System.currentTimeMillis() - startTimeForTimeout + 10;
 
             while (fileSender.currentState == State.WAIT_FOR_HI) {
+                startTimeForTimeout = System.currentTimeMillis();
                 fileSender.processMsg(Msg.SEND_HI);
                 fileSender.processMsg(Msg.WAIT_FOR_HI);
+                fileSender.timeout = System.currentTimeMillis() - startTimeForTimeout + 10;
             }
             if (fileSender.currentState == State.SERVER_UNREACHABLE) {
                 System.out.println("ERROR SERVER UNREACHABLE!");
@@ -294,7 +298,7 @@ public class FileSender {
                 }
             }
             long duration = System.currentTimeMillis() - startTime;
-            System.out.println("Duration: " + duration);
+            System.out.println("Duration: " + duration / 1000 + " seconds");
             System.out.println("Datarate: " + (sizeOfFile / (duration / 1000.0)) / 1000 + " KB/sec");
         }
         System.out.println("FileSender ended - Goodbye!");

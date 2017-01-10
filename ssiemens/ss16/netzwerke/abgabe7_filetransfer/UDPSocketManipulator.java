@@ -47,9 +47,8 @@ class UDPSocketManipulator extends DatagramSocket {
             byte[] data = p.getData().clone();
             int lastByte = data[p.getLength() - 1];
             int newLastByte = lastByte ^ 1;
-            System.out.println("lastByte: " + lastByte + " NewLastByte: " + newLastByte);
+            assert Tracer.printConsoleLog("lastByte: " + lastByte + " NewLastByte: " + newLastByte);
             data[p.getLength() - 1] = (byte) newLastByte;
-            System.out.println(p.getPort());
             packetWithBitError = new DatagramPacket(data, data.length, p.getAddress(), p.getPort());
             doBitError = true;
         }
