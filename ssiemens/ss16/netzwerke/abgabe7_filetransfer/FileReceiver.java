@@ -65,7 +65,7 @@ public class FileReceiver {
         transition[State.WAIT_FOR_SEQ_ZERO.ordinal()][Msg.GET_SEQ_ZERO.ordinal()] = new getSeqZero();
         transition[State.FINISH.ordinal()][Msg.GET_HI.ordinal()] = new restartReceiver();
 
-        System.out.println("INFO FSM constructed, current state: " + currentState);
+        assert Tracer.printConsoleLog("INFO FSM constructed, current state: " + currentState);
     }
 
     /**
@@ -75,12 +75,13 @@ public class FileReceiver {
      */
     private void
     processMsg(Msg input) throws IOException {
-        System.out.println("INFO Received " + input + " in state " + currentState);
+        assert Tracer.printConsoleLog("INFO Received " + input + " in state " + currentState);
+
         Transition trans = transition[currentState.ordinal()][input.ordinal()];
         if (trans != null) {
             currentState = trans.execute(input);
         }
-        System.out.println("INFO New State: " + currentState);
+        assert Tracer.printConsoleLog("INFO New State: " + currentState);
     }
 
     /**
@@ -101,7 +102,7 @@ public class FileReceiver {
 
             // check for bit error
             if (!crc32Check(receivedBytes)) {
-                System.out.println("ERROR - CRC32 check failed");
+                assert Tracer.printConsoleLog("ERROR - CRC32 check failed");
                 return State.WAIT_FOR_HI;
             }
 
@@ -121,7 +122,7 @@ public class FileReceiver {
             }
 
             if (!messageIsValid) {
-                System.out.println("ERROR - Hi-Message has wrong format");
+                assert Tracer.printConsoleLog("ERROR - Hi-Message has wrong format");
                 return State.WAIT_FOR_HI;
             }
 
@@ -164,7 +165,7 @@ public class FileReceiver {
 
             // Check sender ip address
             if (!ipFromSender.equals(receivedPacket.getAddress())) {
-                System.out.println("ERROR - Packet from different host");
+                assert Tracer.printConsoleLog("ERROR - Packet from different host");
                 noRepeatAck = true;
                 return currentState;
             }
@@ -172,13 +173,13 @@ public class FileReceiver {
             receivedBytes = Arrays.copyOfRange(receiveBuffer, 0, receivedPacket.getLength());
             // check for bit error
             if (!crc32Check(receivedBytes)) {
-                System.out.println("ERROR - CRC32 check failed");
+                assert Tracer.printConsoleLog("ERROR - CRC32 check failed");
                 noRepeatAck = true;
                 return currentState;
             }
 
             if (receivedBytes[4] != 0) {
-                System.out.println("ERROR - Got wrong Seq-Number: " + 1);
+                assert Tracer.printConsoleLog("ERROR - Got wrong Seq-Number: " + 1);
                 return currentState;
             }
             fileOutputStream.write(receivedBytes, 5, receivedBytes.length - 5);
@@ -201,7 +202,7 @@ public class FileReceiver {
             }
             // Check sender ip address
             if (!ipFromSender.equals(receivedPacket.getAddress())) {
-                System.out.println("ERROR - Packet from different host");
+                assert Tracer.printConsoleLog("ERROR - Packet from different host");
                 noRepeatAck = true;
                 return currentState;
             }
@@ -209,13 +210,13 @@ public class FileReceiver {
             receivedBytes = Arrays.copyOfRange(receiveBuffer, 0, receivedPacket.getLength());
             // check for bit error
             if (!crc32Check(receivedBytes)) {
-                System.out.println("ERROR - CRC32 check failed");
+                assert Tracer.printConsoleLog("ERROR - CRC32 check failed");
                 noRepeatAck = true;
                 return currentState;
             }
 
             if (receivedBytes[4] != 1) {
-                System.out.println("ERROR - Got wrong Seq-Number: " + 0);
+                assert Tracer.printConsoleLog("ERROR - Got wrong Seq-Number: " + 0);
                 return currentState;
             }
 

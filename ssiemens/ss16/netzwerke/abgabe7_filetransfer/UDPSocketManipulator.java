@@ -7,6 +7,7 @@ import java.net.SocketException;
 import java.util.Random;
 
 class UDPSocketManipulator extends DatagramSocket {
+
     private final double probabilityLoosePacket;
     private final double probabilityDoublePacket;
     private final double probabilityBiterrorPacket;
@@ -41,7 +42,7 @@ class UDPSocketManipulator extends DatagramSocket {
         if (randomNumberBitError >= probabilityBiterrorPacket) {
             doBitError = false;
         } else {
-            System.out.println("GENERATE BITERROR");
+            assert Tracer.printConsoleLog("GENERATE BITERROR");
             bitErrorPackets++;
             byte[] data = p.getData().clone();
             int lastByte = data[p.getLength() - 1];
@@ -57,7 +58,7 @@ class UDPSocketManipulator extends DatagramSocket {
         if (randomNumberDoubleSend >= probabilityDoublePacket) {
             doDoubleSend = false;
         } else {
-            System.out.println("SEND PACKET TWICE");
+            assert Tracer.printConsoleLog("SEND PACKET TWICE");
             doublePackets++;
             doDoubleSend = true;
         }
@@ -69,7 +70,7 @@ class UDPSocketManipulator extends DatagramSocket {
                 super.send(doBitError ? packetWithBitError : p);
             }
         } else {
-            System.out.println("DESTROY PACKET");
+            assert Tracer.printConsoleLog("DESTROY PACKET");
             destroyedPackets++;
         }
 

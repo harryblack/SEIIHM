@@ -79,7 +79,7 @@ public class FileSender {
         transition[State.WAIT_FOR_SEND_SEQ_ONE.ordinal()][Msg.SEND_SEQ.ordinal()] = new SendSeq();
         transition[State.WAIT_FOR_ACK_ONE.ordinal()][Msg.WAIT_FOR_ACK.ordinal()] = new WaitForAck();
         transition[State.WAIT_FOR_ACK_ONE.ordinal()][Msg.RETRANSMIT.ordinal()] = new Retransmit();
-        System.out.println("INFO FSM constructed, current state: " + currentState);
+        assert Tracer.printConsoleLog("INFO FSM constructed, current state: " + currentState);
     }
 
     /**
@@ -108,7 +108,7 @@ public class FileSender {
     private class SendHi extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
-            System.out.println("INFO Send Hi!");
+            assert Tracer.printConsoleLog("INFO Send Hi!");
             final byte[] message = hiMessage.getBytes();
             final byte[] calculatedCRC = getCRC32InBytes(message);
             bytesToSend = ByteBuffer.allocate(calculatedCRC.length + message.length).put(calculatedCRC).put(message).array();
@@ -121,7 +121,7 @@ public class FileSender {
     private class WaitForHiResponse extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
-            System.out.println("INFO Wait for Hi-Response!");
+            assert Tracer.printConsoleLog("INFO Wait for Hi-Response!");
             DatagramPacket test = new DatagramPacket(new byte[1500], 1500, InetAddress.getByName("localhost"), 7777);
 
             udpSocket.setSoTimeout(3_000);
@@ -129,7 +129,7 @@ public class FileSender {
                 //udpSocket.receive(packetReceived);
                 udpSocket.receive(test);
             } catch (SocketTimeoutException ex) {
-                System.out.println("TIMEOUT-HI");
+                assert Tracer.printConsoleLog("TIMEOUT-HI");
                 sendHiRetryCounter++;
                 if (sendHiRetryCounter < 5) {
                     return State.WAIT_FOR_HI;
@@ -153,8 +153,8 @@ public class FileSender {
     private class SendSeq extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
+            assert Tracer.printConsoleLog("INFO Send sequence number: " + (sequenceNumberIsZero ? 0 : 1));
             unexpectedAck = false;
-            System.out.println("INFO Send sequence number: " + (sequenceNumberIsZero ? 0 : 1));
             packetReceived.setPort(7777);
             int sequenceNumber = sequenceNumberIsZero ? 0 : 1;
 
@@ -178,7 +178,7 @@ public class FileSender {
     private class WaitForAck extends Transition {
         @Override
         public State execute(Msg input) throws UnknownHostException {
-            System.out.println("INFO Wait for ACK: " + (sequenceNumberIsZero ? 0 : 1));
+            assert Tracer.printConsoleLog("INFO Wait for ACK: " + (sequenceNumberIsZero ? 0 : 1));
 
             unexpectedAck = false;
             bytesReceived = new byte[1500];
@@ -188,32 +188,32 @@ public class FileSender {
                 udpSocket.setSoTimeout(500);
                 udpSocket.receive(packetReceived);
             } catch (SocketTimeoutException ex) {
-                System.out.println("ERROR Receive-SocketTimeoutException");
+                assert Tracer.printConsoleLog("ERROR Receive-SocketTimeoutException");
                 return currentState;
             } catch (IOException e) {
-                System.out.println("ERROR IOException");
+                assert Tracer.printConsoleLog("ERROR IOException");
                 return currentState;
             }
 
             if (packetReceived.getLength() != 5) {
-                System.out.println("ERROR RESPONSE DOES NOT HAVE 5 BYTES");
+                assert Tracer.printConsoleLog("ERROR RESPONSE DOES NOT HAVE 5 BYTES");
                 unexpectedAck = true;
-                System.out.println("INFO Unexpected ACK set to true");
+                assert Tracer.printConsoleLog("INFO Unexpected ACK set to true");
                 return currentState;
             }
 
             bytesReceived = Arrays.copyOfRange(packetReceived.getData(), 0, packetReceived.getLength());
             final boolean packetIsValid = crc32Check(bytesReceived);
             if (!packetIsValid) {
-                System.out.println("ERROR CRC32-Validation failed!");
+                assert Tracer.printConsoleLog("ERROR CRC32-Validation failed!");
                 return currentState;
             }
 
             final boolean ackHasSeqNumber = (int) bytesReceived[4] == sequenceNumber;
             if (!ackHasSeqNumber) {
-                System.out.println("ERROR WRONG ACK-NR - Got: " + bytesReceived[4] + " Length: " + bytesReceived.length);
+                assert Tracer.printConsoleLog("ERROR WRONG ACK-NR - Got: " + bytesReceived[4] + " Length: " + bytesReceived.length);
                 unexpectedAck = true;
-                System.out.println("INFO Unexpected ACK set to true");
+                assert Tracer.printConsoleLog("INFO Unexpected ACK set to true");
                 return currentState;
             }
 
@@ -225,7 +225,7 @@ public class FileSender {
     private class Retransmit extends Transition {
         @Override
         public State execute(Msg input) throws IOException {
-            System.out.println("Retransmit Seq: " + (sequenceNumberIsZero ? 0 : 1));
+            assert Tracer.printConsoleLog("Retransmit Seq: " + (sequenceNumberIsZero ? 0 : 1));
             udpSocket.send(packetToSend);
             udpSocket.setSoTimeout(1_000);
             return sequenceNumberIsZero ? State.WAIT_FOR_ACK_ZERO : State.WAIT_FOR_ACK_ONE;
