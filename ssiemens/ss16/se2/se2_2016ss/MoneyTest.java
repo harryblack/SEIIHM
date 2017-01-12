@@ -1,0 +1,18 @@
+package ssiemens.ss16.se2.se2_2016ss;
+
+/**
+ * Created by Sascha on 12/01/2017.
+ */
+public class MoneyTest {
+    public static void main(String[] args) {
+        Money test = new Money.CreateMoney().make(7);
+        Money test1 = new Money.CreateMoney().make(8);
+        Money test2 = new Money.CreateMoney().make(5);
+        Money test3 = new Money.CreateMoney().make(1);
+        System.out.println(test.getCoins());    // OK
+        System.out.println(test1.getCoins());   // OK
+        System.out.println(test2.getCoins());   // OK
+        //System.out.println(test3.getCoins()); // ERROR -> NullPointerException
+
+    }
+}
