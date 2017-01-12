@@ -11,17 +11,6 @@ public abstract class PackageBooking implements Booking {
     private Booking[] bookings;
     private boolean isBooked;
 
-
-    /**
-     * Der Konstruktor frisst ein Vararg von Bookings. Diese können somit ssiemens.ss16.se1.SimpleBooking's oder ssiemens.ss16.se1.PackageBooking's sein, da beide
-     * Klassen von dem Interface ssiemens.ss16.se1.Booking ableiten.
-     * @param bookings Liste von SimpleBokkings oder/und ssiemens.ss16.se1.PackageBooking's.
-     */
-    public PackageBooking(Booking... bookings) {
-        this.bookings = bookings;
-        this.isBooked = false;
-    }
-
     @Override
     public double calcPrice() {
         int result = 0;
@@ -33,13 +22,21 @@ public abstract class PackageBooking implements Booking {
 
     @Override
     public void book() {
-
+        isBooked = true;
     }
 
     @Override
     public boolean isBooked() {
-        return false;
+        return isBooked;
     }
+
+    abstract Booking[] components();
+
+    abstract Booking getComponent(int index);
+
+    abstract void addComponent(Booking bc);
+
+    abstract Booking removeComponent(int index);
 
     /**
      * Die toString()-Methode gibt am Anfang den Preis des Pakets und anschließend den Preis aller enthaltenen Einzel-
@@ -48,6 +45,7 @@ public abstract class PackageBooking implements Booking {
      */
     @Override
     public String toString() {
+        if(bookings == null) return "Package is empty!";
         String result = "Package price: " + calcPrice() + ". Package booked: " + isBooked();
         result += "The package contains following bookings:";
         for (Booking booking : bookings) {
