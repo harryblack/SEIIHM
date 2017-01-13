@@ -1,4 +1,4 @@
-package ssiemens.ss16.netzwerke;
+package ssiemens.ss16.netzwerke.basics;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;

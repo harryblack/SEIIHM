@@ -1,4 +1,4 @@
-package ssiemens.ss16.netzwerke;
+package ssiemens.ss16.netzwerke.basics;
 
 import java.io.*;
 import java.net.Socket;
@@ -9,7 +9,7 @@ import java.nio.charset.StandardCharsets;
  */
 public class TCPClient {
 
-    public static final String SERVER = "www.cs.hm.edu";
+    public static final String SERVER = "www.heise.de";
 
     static void doRequest() throws IOException {
         try (Socket s = new Socket(SERVER, 80);
@@ -24,7 +24,7 @@ public class TCPClient {
 
             // send get request
             writer.write("GET / HTTP/1.1 \r\n" +
-                    "Host: www.cs.hm.edu \r\n\r\n");
+                    "Host: www.heise.de \r\n\r\n");
             writer.flush();
 
             for (int i = 0; i < 20; i++) {
