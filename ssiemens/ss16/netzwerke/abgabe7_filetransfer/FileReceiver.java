@@ -23,6 +23,7 @@ public class FileReceiver {
     private int sizeOfFile;
     private FileOutputStream fileOutputStream;
     private boolean noRepeatAck;
+    private int socketTimeout = 5000;
 
 
     private InetAddress ipFromSender;
@@ -36,7 +37,7 @@ public class FileReceiver {
 
     // all states for this FSM
     private enum State {
-        WAIT_FOR_HI, WAIT_FOR_FIRST_PACKET, WAIT_FOR_SEQ_ZERO, WAIT_FOR_SEQ_ONE, FINISH
+        IDLE, WAIT_FOR_FIRST_PACKET, WAIT_FOR_SEQ_ZERO, WAIT_FOR_SEQ_ONE, FINISH
     }
 
     // all messages/conditions which can occur
@@ -51,12 +52,12 @@ public class FileReceiver {
         this.udpSocket = udpSocket;
 
         // Set current state
-        currentState = State.WAIT_FOR_HI;
+        currentState = State.IDLE;
 
         // define all valid state transitions for our state machine
         // (undefined transitions will be ignored)
         transition = new Transition[State.values().length][Msg.values().length];
-        transition[State.WAIT_FOR_HI.ordinal()][Msg.GET_HI.ordinal()] = new waitForHi();
+        transition[State.IDLE.ordinal()][Msg.GET_HI.ordinal()] = new waitForHi();
         transition[State.WAIT_FOR_FIRST_PACKET.ordinal()][Msg.SEND_RESPONSE_HI.ordinal()] = new respondWithHi();
         transition[State.WAIT_FOR_FIRST_PACKET.ordinal()][Msg.GET_SEQ_ZERO.ordinal()] = new getSeqZero();
         transition[State.WAIT_FOR_SEQ_ONE.ordinal()][Msg.SEND_ACK_ZERO.ordinal()] = new sendAckZero();
@@ -103,7 +104,7 @@ public class FileReceiver {
             // check for bit error
             if (!crc32Check(receivedBytes)) {
                 assert Tracer.printConsoleLog("ERROR - CRC32 check failed");
-                return State.WAIT_FOR_HI;
+                return State.IDLE;
             }
 
             // check for valid HI-Message with file size and file name
@@ -123,7 +124,7 @@ public class FileReceiver {
 
             if (!messageIsValid) {
                 assert Tracer.printConsoleLog("ERROR - Hi-Message has wrong format");
-                return State.WAIT_FOR_HI;
+                return State.IDLE;
             }
 
             System.out.println("filesize: " + sizeOfFile + " filename: " + filename);
@@ -146,7 +147,7 @@ public class FileReceiver {
             packetToSent = new DatagramPacket(dataReceived, dataReceived.length, ipFromSender, 8888);
             System.out.println(new String(packetToSent.getData()));
             udpSocket.send(receivedPacket);
-            udpSocket.setSoTimeout(1500);
+            udpSocket.setSoTimeout(socketTimeout);
             return State.WAIT_FOR_FIRST_PACKET;
         }
     }
@@ -258,7 +259,7 @@ public class FileReceiver {
         public State execute(Msg input) throws IOException {
             System.out.println("INFO Restarting receiver...");
             udpSocket.setSoTimeout(0);
-            return State.WAIT_FOR_HI;
+            return State.IDLE;
         }
     }
 
@@ -271,10 +272,10 @@ public class FileReceiver {
 
             while (true) {
                 fileReceiver.totalBytesReceived = 0;
-                while (fileReceiver.currentState == State.WAIT_FOR_HI)
+                while (fileReceiver.currentState == State.IDLE)
                     fileReceiver.processMsg(Msg.GET_HI);
                 long startTimeFileTransfer = System.currentTimeMillis();
-                try (FileOutputStream fileOutputStream = new FileOutputStream(new File("copyOf_"+fileReceiver.filename))) {
+                try (FileOutputStream fileOutputStream = new FileOutputStream(new File("copyOf_" + fileReceiver.filename))) {
                     fileReceiver.fileOutputStream = fileOutputStream;
 
                     while (fileReceiver.currentState == State.WAIT_FOR_FIRST_PACKET) {
@@ -298,9 +299,9 @@ public class FileReceiver {
                         }
                     }
                 }
-                long duration = System.currentTimeMillis()-startTimeFileTransfer-1500;
+                long duration = System.currentTimeMillis() - startTimeFileTransfer - fileReceiver.socketTimeout;
                 System.out.println("Duration: " + duration);
-                System.out.println("Datarate: "+(fileReceiver.totalBytesReceived/(duration/1000.0)/1000)+" KB/sec");
+                System.out.println("Datarate: " + (fileReceiver.totalBytesReceived / (duration / 1000.0) / 1000) + " KB/sec");
                 System.out.println("expected size of file: " + fileReceiver.sizeOfFile);
                 System.out.println("actual size of file: " + fileReceiver.totalBytesReceived);
 
