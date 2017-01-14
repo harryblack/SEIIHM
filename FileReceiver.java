@@ -1,5 +1,3 @@
-package ssiemens.ss16.netzwerke.abgabe7_filetransfer;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
