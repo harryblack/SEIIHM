@@ -250,7 +250,7 @@ public class FileSender {
     public static void main(String[] args) throws IOException {
         // check argument length
         if (args.length != 2) {
-            throw new IllegalArgumentException("Need two parameters: java FileSender <filename> <ip-address or dns-hostname> .");
+            throw new IllegalArgumentException("Need two parameters: java ssiemens.ss16.netzwerke.abgabe7_filetransfer.FileSender <filename> <ip-address or dns-hostname> .");
         }
         // parse arguments
         final String fileName = args[0];
@@ -273,7 +273,7 @@ public class FileSender {
 
         // create UDP-Socket
         try (DatagramSocket udpSocket = new DatagramSocket()) {
-            // create FileSender
+            // create ssiemens.ss16.netzwerke.abgabe7_filetransfer.FileSender
             FileSender fileSender = new FileSender(udpSocket, fileInputStream, sizeOfFile, fileName, targetHost);
 
 
@@ -303,7 +303,7 @@ public class FileSender {
             }
 
         }
-        System.out.println("FileSender ended - Goodbye!");
+        System.out.println("ssiemens.ss16.netzwerke.abgabe7_filetransfer.FileSender ended - Goodbye!");
     }
 
     private boolean crc32Check(byte[] data) {

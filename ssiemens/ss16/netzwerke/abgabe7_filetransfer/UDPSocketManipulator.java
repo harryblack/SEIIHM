@@ -1,3 +1,5 @@
+package ssiemens.ss16.netzwerke.abgabe7_filetransfer;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
