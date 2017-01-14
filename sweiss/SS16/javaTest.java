@@ -7,6 +7,7 @@ public class javaTest {
 
     public static void main(String[] args) {
 
+
         BoundHashMap<Integer, String> boundHashMap = new BoundHashMap<>();
 
         boundHashMap.put(1, "one");

@@ -14,7 +14,7 @@ public class TestFileStream {
     public static void main(String[] args) throws IOException {
         // check argument length
         if (args.length != 2) {
-            throw new IllegalArgumentException("Need two parameters: java FileSender <filename> <ip-address or dns-hostname> .");
+            throw new IllegalArgumentException("Need two parameters: java ssiemens.ss16.netzwerke.abgabe7_filetransfer.FileSender <filename> <ip-address or dns-hostname> .");
         }
         // parse arguments
         final String fileName = args[0];
